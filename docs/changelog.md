@@ -26,6 +26,6 @@ Tomando como referencia la plantilla de proyecto entregada por el maestro agrega
 
 - Archivo readme  [README.md](../README.md)
 - Funcionalidades [funcionalidades.md](funcionalidades.md)
-- Log de cambios [changelog.md](changelog.md)
 - Ideas de proyecto [ideas.md](ideas.md)
 - Mockups de UI [ui.md](ui.md)
+- Log de cambios [changelog.md](changelog.md)

@@ -10,9 +10,13 @@ La aplicación tendrá la siguientes pantallas
 
 ![screen2](images/Mockup-Cuentas.png)
 
-3. Pantalla : Transferencias
+3. Pantalla : Detalles de cuenta
 
-![screen2](images/Mockup-Transferencias.png)
+![screen3](images/Mockup-DetallesDeCuentas.png)
+
+4. Pantalla : Transferencias
+
+![screen4](images/Mockup-Transferencias.png)
 
 # Referencias
 

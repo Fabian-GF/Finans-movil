@@ -1,20 +1,16 @@
+# Proyecto Finans 
+
+El en presente repositorio se encuentra el proyecto de semestre de la asignatura Electiva I - Desarrollo de Aplicaciones Móviles. Para su elaboración, se utilizó como referencia la plantilla proporcionada por el profesor del curso, que presenta las siguientes características.
+
 # Plantilla de proyecto
 
-Este repositorio contiene una plantilla de proyecto que puede usar para inicializar su propio repositorio. Esta plantilla incluye:
+  Para el  repositorio contiene una plantilla de proyecto. Esta plantilla incluye:
 
 - Estructura de carpetas con la documentación
 - Integración con Github Actions:
   - Integración continua
   - Pruebas automatizadas usando Firebase Test Lab
 
-Para usar esta plantilla:
-
-1. Cree su propio repositorio [usando este como plantilla](https://docs.github.com/es/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template)
-2. Clone el repositorio localmente
-3. Puede iniciar modificando el archivo README para incluir los detalles de su proyecto
-4. Cuando cree su proyecto desde Android Studio **asegúrese de seleccionar la carpeta donde clono este repositorio como carpeta para su proyecto**
-
-Una vez suba el código de su proyecto de Android el workflow de integración continua se ejecutara de forma automática. Puede ver el resultado junto a su ultimo commit con un icono de éxito :check o de fallo :failure. Dando clic allí podrá ver mas detalles.
 
 ## Integración continua
 
