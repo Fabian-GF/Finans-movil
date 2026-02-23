@@ -1,8 +1,11 @@
-# Nombre de la aplicación
+# Finans 
 
-Reemplace este texto con una descripción de su aplicación. Revise el archivo [HELP.md](HELP.md) donde hay mas información sobre como usar esta plantilla.
+Finans es una aplicacion web diseñada para la gestion integral de finanzas personales
+Permite que el usuario lleve un control detallado de sus ingresos y egresos a traves de multiples cuentas, facilitando la visualzacion del flujo de caja diario y el saldo real de sus actvos
 
-Autor(es): Nombre del estudiante
+Autor(es):  Jhoan Sebastian Gonzalez Fajardo
+            Santiago Angel Mancera  
+            Oscar Fabian Gomez Bejarano
 
 ## Referencias
 

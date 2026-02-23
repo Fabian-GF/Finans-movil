@@ -2,9 +2,17 @@
 
 La aplicación tendrá la siguientes pantallas
 
-1. Pantalla 1: Lorem Ipsum Dolor
+1. Pantalla : Inicio
 
-![screen1](images/waze_app_screenshot.jpg)
+![screen1](images/Mockup-Inicio.png)
+
+2. Pantalla : Cuentas
+
+![screen2](images/Mockup-Cuentas.png)
+
+3. Pantalla : Transferencias
+
+![screen2](images/Mockup-Transferencias.png)
 
 # Referencias
 
