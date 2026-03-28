@@ -1,6 +1,7 @@
 package com.example.finans_movil
 
-import HomeView
+import HomeContent
+import MainView
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -47,7 +48,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FinansmovilTheme {
-                HomeView()
+                MainView()
             }
         }
     }
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainViewPreview() {
     FinansmovilTheme {
-        HomeView()
+        HomeContent()
+        MainView()
     }
 }

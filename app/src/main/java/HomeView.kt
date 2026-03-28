@@ -2,7 +2,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,15 +20,12 @@ import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material.icons.filled.Preview
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -38,15 +34,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.finans_movil.AccountsView
 
 private val AppBg = Color(0xFF000000)
 private val CardBg = Color(0xFF081A3A)
@@ -66,8 +65,40 @@ data class DemoAccount(
     val badgeColor: Color
 )
 
+sealed class Screen(val route: String) {
+    object Home : Screen("home")
+    object Accounts : Screen("accounts")
+    object Transfer : Screen("transfer")
+}
+
 @Composable
-fun HomeView() {
+fun MainView(){
+    val navController = rememberNavController()
+
+    Scaffold(
+        containerColor = AppBg,
+        bottomBar = {
+            DemoBottomBar(navController)
+        }
+    ) { innerPadding ->
+
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Home.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(Screen.Home.route){
+                HomeContent()
+            }
+
+            composable(Screen.Accounts.route){
+                AccountsView()
+            }
+        }
+    }
+}
+@Composable
+fun HomeContent() {
     val accounts = listOf(
         DemoAccount(
             type = "Cuenta Nómina",
@@ -79,7 +110,7 @@ fun HomeView() {
         ),
         DemoAccount(
             type = "Ahorro",
-            badge = "META",
+            badge = "AHORRO",
             title = "Fondo Viaje",
             amount = "$48,200.00",
             maskedNumber = "**** **** 9041",
@@ -87,15 +118,11 @@ fun HomeView() {
         )
     )
 
-    Scaffold(
-        containerColor = AppBg,
-        bottomBar = { DemoBottomBar() }
-    ) { innerPadding ->
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(AppBg)
-                .padding(innerPadding)
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
@@ -126,7 +153,6 @@ fun HomeView() {
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
-    }
 }
 
 //tarjeta superior
@@ -351,7 +377,7 @@ private fun InfoAccountCard(account: DemoAccount) {
 }
 
 @Composable
-private fun BadgePill(
+fun BadgePill(
     text: String,
     backgroundColor: Color,
     textColor: Color
@@ -371,13 +397,12 @@ private fun BadgePill(
 }
 
 @Composable
-private fun DemoBottomBar() {
-    var selected by remember { mutableIntStateOf(0) }
+private fun DemoBottomBar(navController: NavHostController) {
 
     val items = listOf(
-        Triple("Inicio", Icons.Default.Home, 0),
-        Triple("Cuentas", Icons.Default.AccountBalanceWallet, 1),
-        Triple("Transferir", Icons.Default.SwapHoriz, 2)
+        Triple("Inicio", Icons.Default.Home, Screen.Home.route),
+        Triple("Cuentas", Icons.Default.AccountBalanceWallet, Screen.Accounts.route),
+        Triple("Transferir", Icons.Default.SwapHoriz, Screen.Transfer.route)
     )
 
     NavigationBar(
@@ -387,10 +412,20 @@ private fun DemoBottomBar() {
             .border(1.dp, Color(0xFF101820))
             .navigationBarsPadding()
     ) {
-        items.forEach { (label, icon, index) ->
+        val currentBackStack by navController.currentBackStackEntryAsState()
+        val currentRoute = currentBackStack?.destination?.route
+
+        items.forEach { (label, icon, route) ->
             NavigationBarItem(
-                selected = selected == index,
-                onClick = { selected = index },
+                selected = currentRoute == route,
+
+                onClick = {
+                    navController.navigate(route){
+                          popUpTo(Screen.Home.route)
+                          launchSingleTop = true
+                    }
+                },
+
                 icon = {
                     Icon(
                         imageVector = icon,
