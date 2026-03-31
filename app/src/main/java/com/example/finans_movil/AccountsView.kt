@@ -1,6 +1,5 @@
 package com.example.finans_movil
 
-import BadgePill
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 
 
 private val AppBg = Color(0xFF000000)
@@ -40,20 +40,12 @@ private val Muted = Color(0xFF9FAAC0)
 private val MutedSoft = Color(0xFF6F7A92)
 private val WhiteSoft = Color(0xFFF5F7FA)
 private val BlueBadge = Color(0xFF2D6BFF)
-data class DemoAccount(
-    val type: String,
-    val badge: String,
-    val title: String,
-    val amount: String,
-    val maskedNumber: String,
-    val badgeColor: Color
-)
 
 @Composable
-fun AccountsView() {
+fun AccountsView(navController: NavHostController) {
 
     val accounts = listOf(
-        DemoAccount(
+        HomeView(
             type = "Cuenta Nómina",
             badge = "ACTIVA",
             title = "Cuenta Principal",
@@ -61,7 +53,7 @@ fun AccountsView() {
             maskedNumber = "**** **** 1128",
             badgeColor = BlueBadge
         ),
-        DemoAccount(
+        HomeView(
             type = "Ahorro",
             badge = "AHORRO",
             title = "Fondo Viaje",
@@ -69,7 +61,7 @@ fun AccountsView() {
             maskedNumber = "**** **** 9041",
             badgeColor = Accent
         ),
-        DemoAccount(
+        HomeView(
             type = "Crédito",
             badge = "PRÉSTAMO",
             title = "Tarjeta de Credito ",
@@ -100,18 +92,19 @@ fun AccountsView() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(accounts) { account ->
-                InfoAccountCard(account)
+                InfoAccountCard(account, navController)
             }
         }
     }
 }
 
 @Composable
-private fun InfoAccountCard(account: DemoAccount) {
+private fun InfoAccountCard(account: HomeView, navController: NavHostController) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { },
+            .clickable{
+                navController.navigate(Screen.AccountDetail.route) },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg),
         border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)

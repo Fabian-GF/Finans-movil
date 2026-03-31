@@ -1,6 +1,6 @@
 # Diseño de interfaz de usuario
 
-La aplicación tendrá la siguientes pantallas
+La aplicación tendrá laS siguientes pantallas
 
 1. Pantalla : Inicio
 
@@ -17,6 +17,13 @@ La aplicación tendrá la siguientes pantallas
 4. Pantalla : Transferencias
 
 ![screen4](images/Mockup-Transferencias.png)
+
+Adicionalmente, se crea la Pantalla de Ingreso y Egreso que no se tenía prevista en la primera entrega.
+
+5. Pantalla : Ingreso o Egreso
+
+![screen4](images/Mockup-Transacion.png)
+
 
 # Referencias
 

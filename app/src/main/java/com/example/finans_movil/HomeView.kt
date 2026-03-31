@@ -1,4 +1,7 @@
+package com.example.finans_movil
+
 import android.annotation.SuppressLint
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,12 +21,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -35,9 +39,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,7 +54,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.finans_movil.AccountsView
 
 private val AppBg = Color(0xFF000000)
 private val CardBg = Color(0xFF081A3A)
@@ -57,7 +64,7 @@ private val MutedSoft = Color(0xFF6F7A92)
 private val WhiteSoft = Color(0xFFF5F7FA)
 private val BlueBadge = Color(0xFF2D6BFF)
 
-data class DemoAccount(
+data class HomeView(
     val type: String,
     val badge: String,
     val title: String,
@@ -70,6 +77,10 @@ sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Accounts : Screen("accounts")
     object Transfer : Screen("transfer")
+    object AccountDetail : Screen("account_detail")
+    object Transaction : Screen("transaction/{type}"){
+        fun createRoute(type: String) = "transaction/$type"
+    }
 }
 
 @Composable
@@ -89,20 +100,37 @@ fun MainView(){
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Home.route){
-                HomeContent()
+                HomeContent(navController)
             }
 
             composable(Screen.Accounts.route){
-                AccountsView()
+                AccountsView(navController)
+            }
+
+            composable(Screen.Transfer.route){
+                TransferView()
+            }
+
+            composable(Screen.AccountDetail.route) {
+                AccountDetailView()
+            }
+
+            composable(
+                route = Screen.Transaction.route
+            ) { backStackEntry ->
+
+                val type = backStackEntry.arguments?.getString("type") ?: "ingreso"
+
+                TransactionView(type = type)
             }
         }
     }
 }
 @SuppressLint("SuspiciousIndentation")
 @Composable
-fun HomeContent() {
+fun HomeContent(navController: NavHostController) {
     val accounts = listOf(
-        DemoAccount(
+        HomeView(
             type = "Cuenta Nómina",
             badge = "ACTIVA",
             title = "Cuenta Principal",
@@ -110,7 +138,7 @@ fun HomeContent() {
             maskedNumber = "**** **** 1128",
             badgeColor = BlueBadge
         ),
-        DemoAccount(
+        HomeView(
             type = "Ahorro",
             badge = "AHORRO",
             title = "Fondo Viaje",
@@ -120,7 +148,9 @@ fun HomeContent() {
         )
     )
 
-
+    Column(
+        modifier = Modifier
+    ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -133,7 +163,7 @@ fun HomeContent() {
             }
 
             item {
-                HeroBalanceCard()
+                HeroBalanceCard(navController)
             }
 
             item {
@@ -155,16 +185,19 @@ fun HomeContent() {
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
+    }
 }
 
 //tarjeta superior
 @Composable
-private fun HeroBalanceCard() {
+private fun HeroBalanceCard(navController: NavHostController) {
+    var isVisible by remember { mutableStateOf(true) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg),
-        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
+        border = BorderStroke(1.dp, CardBorder)
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -185,7 +218,7 @@ private fun HeroBalanceCard() {
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = "$61,830.25",
+                        text = if (isVisible) "$61,830.25" else "••••••",
                         color = WhiteSoft,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
@@ -193,34 +226,40 @@ private fun HeroBalanceCard() {
                 }
 
                 Icon(
-                    imageVector = Icons.Default.Album,
+                    imageVector = if (isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                     contentDescription = "Ver",
                     tint = Muted,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable {
+                            isVisible = !isVisible
+                        }
                 )
             }
 
             Spacer(modifier = Modifier.height(22.dp))
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+
             ) {
                 QuickActionCard(
-                    label = "Enviar",
-                    icon = Icons.Default.Send,
-                    selected = true
+                    label = "Ingreso",
+                    icon = Icons.Default.ArrowDownward,
+                    selected = true,
+                    onClick = {
+                        navController.navigate(Screen.Transaction.createRoute("ingreso"))
+                    }
                 )
 
                 QuickActionCard(
-                    label = "Escanear",
-                    icon = Icons.Default.QrCodeScanner,
-                    selected = false
-                )
-
-                QuickActionCard(
-                    label = "Pagar",
-                    icon = Icons.Default.AccountBalanceWallet,
-                    selected = false
+                    label = "Egreso",
+                    icon = Icons.Default.ArrowUpward,
+                    selected = false,
+                    onClick = {
+                        navController.navigate(Screen.Transaction.createRoute("egreso"))
+                    }
                 )
             }
         }
@@ -230,20 +269,25 @@ private fun HeroBalanceCard() {
 @Composable
 private fun QuickActionCard(
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    selected: Boolean
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
-    val bg = if (selected) Accent else Color(0xFF1A2A47)
+    val bg = when (label) {
+        "Ingreso" -> Color(0xFF25FF00)
+        "Egreso" -> Color(0xFFFF3B30)
+        else -> if (selected) Accent else Color(0xFF1A2A47)
+    }
     val content = if (selected) Color.Black else WhiteSoft
 
     Card(
         modifier = Modifier
             .width(90.dp)
             .height(74.dp)
-            .clickable { },
+            .clickable { onClick() },
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = bg),
-        border = if (selected) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF30415F))
+        border = if (selected) null else BorderStroke(1.dp, Color(0xFF30415F))
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(vertical = 10.dp),
@@ -297,14 +341,14 @@ private fun SectionHeader(
 }
 
 @Composable
-private fun InfoAccountCard(account: DemoAccount) {
+private fun InfoAccountCard(account: HomeView) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg),
-        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
+        border = BorderStroke(1.dp, CardBorder)
     ) {
         Column(
             modifier = Modifier.padding(18.dp)
