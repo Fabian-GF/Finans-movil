@@ -1,3 +1,4 @@
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -97,6 +98,7 @@ fun MainView(){
         }
     }
 }
+@SuppressLint("SuspiciousIndentation")
 @Composable
 fun HomeContent() {
     val accounts = listOf(
