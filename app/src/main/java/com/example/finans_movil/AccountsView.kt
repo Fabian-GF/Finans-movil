@@ -22,6 +22,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.finans_movil.Model.Account
+import com.example.finans_movil.Viewmodel.AccountsViewModel
 
 
 private val AppBg = Color(0xFF000000)
@@ -42,9 +46,39 @@ private val WhiteSoft = Color(0xFFF5F7FA)
 private val BlueBadge = Color(0xFF2D6BFF)
 
 @Composable
-fun AccountsView(navController: NavHostController) {
+fun AccountsView(
+    navController: NavHostController,
+    viewModel: AccountsViewModel) {
 
-    val accounts = listOf(
+    val accounts by viewModel.accounts.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppBg)
+            .padding(20.dp)
+    ) {
+        Text(
+            text = "Mis cuentas",
+            color = WhiteSoft,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(accounts) {account ->
+                InfoAccountCard(
+                    account = account,
+                    navController = navController
+                )
+            }
+        }
+    }
+        /* listOf(
         HomeView(
             type = "Cuenta Nómina",
             badge = "ACTIVA",
@@ -95,11 +129,19 @@ fun AccountsView(navController: NavHostController) {
                 InfoAccountCard(account, navController)
             }
         }
-    }
+    } */
 }
 
 @Composable
-private fun InfoAccountCard(account: HomeView, navController: NavHostController) {
+private fun InfoAccountCard(
+    account: Account,
+    navController: NavHostController) {
+    val badgeColor = when(account.badge) {
+        "ACTIVA" -> BlueBadge
+        "AHORRO" -> Accent
+        "PRESTAMO" -> Color.Companion.Red
+        else -> Muted
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -126,8 +168,8 @@ private fun InfoAccountCard(account: HomeView, navController: NavHostController)
 
                 BadgePill(
                     text = account.badge,
-                    backgroundColor = account.badgeColor,
-                    textColor = if (account.badgeColor == Accent) Color.Black else Color.White
+                    backgroundColor = Red,
+                    textColor = Color.White
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -165,14 +207,14 @@ private fun InfoAccountCard(account: HomeView, navController: NavHostController)
                 verticalAlignment = Alignment.Bottom
             ) {
                 Text(
-                    text = account.amount,
+                    text = "$${account.balance}",
                     color = WhiteSoft,
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = account.maskedNumber,
+                    text = account.number,
                     color = MutedSoft,
                     fontSize = 13.sp
                 )

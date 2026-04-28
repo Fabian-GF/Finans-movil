@@ -38,6 +38,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,15 +47,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.finans_movil.Data.Repository.BankRepository
+import com.example.finans_movil.Model.Account
+import com.example.finans_movil.Viewmodel.AccountsViewModel
+import com.example.finans_movil.Viewmodel.Factory.AccountViewModelFactory
 
 private val AppBg = Color(0xFF000000)
 private val CardBg = Color(0xFF081A3A)
@@ -84,8 +92,26 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun MainView(){
+fun MainView(
+    repository: BankRepository
+){
+    val viewModel: AccountsViewModel = viewModel(
+        factory = AccountViewModelFactory(repository)
+    )
     val navController = rememberNavController()
+
+    LaunchedEffect(Unit) {
+        viewModel.insertAccount(
+            Account(
+                id = 0,
+                type = "AHORRO",
+                badge = "AHORRO",
+                title = "Cuenta principal",
+                balance = 120000.0,
+                number = "1223"
+            )
+        )
+    }
 
     Scaffold(
         containerColor = AppBg,
@@ -100,11 +126,13 @@ fun MainView(){
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Home.route){
-                HomeContent(navController)
+                HomeContent(
+                    navController = navController,
+                    viewModel = viewModel)
             }
 
             composable(Screen.Accounts.route){
-                AccountsView(navController)
+                AccountsView(navController, viewModel)
             }
 
             composable(Screen.Transfer.route){
@@ -128,25 +156,11 @@ fun MainView(){
 }
 @SuppressLint("SuspiciousIndentation")
 @Composable
-fun HomeContent(navController: NavHostController) {
-    val accounts = listOf(
-        HomeView(
-            type = "Cuenta Nómina",
-            badge = "ACTIVA",
-            title = "Cuenta Principal",
-            amount = "$12,430.80",
-            maskedNumber = "**** **** 1128",
-            badgeColor = BlueBadge
-        ),
-        HomeView(
-            type = "Ahorro",
-            badge = "AHORRO",
-            title = "Fondo Viaje",
-            amount = "$48,200.00",
-            maskedNumber = "**** **** 9041",
-            badgeColor = Accent
-        )
-    )
+fun HomeContent(
+    navController: NavHostController,
+    viewModel: AccountsViewModel) {
+
+    val accounts by viewModel.accounts.collectAsState()
 
     Column(
         modifier = Modifier
@@ -178,7 +192,9 @@ fun HomeContent(navController: NavHostController) {
             }
 
             items(accounts) { account ->
-                InfoAccountCard(account = account)
+                InfoAccountCard(
+                    account = account,
+                    navController)
             }
 
             item {
@@ -341,7 +357,16 @@ private fun SectionHeader(
 }
 
 @Composable
-private fun InfoAccountCard(account: HomeView) {
+private fun InfoAccountCard(
+    account: Account,
+    navController: NavHostController
+) {
+    val badgeColor = when(account.badge) {
+        "ACTIVA" -> BlueBadge
+        "AHORRO" -> Accent
+        "PRESTAMO" -> Red
+        else -> Muted
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -365,10 +390,17 @@ private fun InfoAccountCard(account: HomeView) {
 
                 Spacer(modifier = Modifier.width(10.dp))
 
+                val badgeColor = when(account.badge) {
+                    "ACTIVA" -> BlueBadge
+                    "AHORRO" -> Accent
+                    "PRÉSTAMO" -> Red
+                    else -> Muted
+                }
+
                 BadgePill(
                     text = account.badge,
-                    backgroundColor = account.badgeColor,
-                    textColor = if (account.badgeColor == Accent) Color.Black else Color.White
+                    backgroundColor = badgeColor,
+                    textColor = Color.White
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -406,14 +438,14 @@ private fun InfoAccountCard(account: HomeView) {
                 verticalAlignment = Alignment.Bottom
             ) {
                 Text(
-                    text = account.amount,
+                    text = "$${account.balance}",
                     color = WhiteSoft,
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = account.maskedNumber,
+                    text = account.number,
                     color = MutedSoft,
                     fontSize = 13.sp
                 )
@@ -430,7 +462,7 @@ fun BadgePill(
 ) {
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = backgroundColor
+        color = Red
     ) {
         Text(
             text = text,
