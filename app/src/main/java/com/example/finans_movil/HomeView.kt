@@ -1,5 +1,6 @@
 package com.example.finans_movil
 
+import android.adservices.adid.AdId
 import android.annotation.SuppressLint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -50,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -85,7 +87,12 @@ sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Accounts : Screen("accounts")
     object Transfer : Screen("transfer")
-    object AccountDetail : Screen("account_detail")
+    object AccountDetail : Screen("accountDetail/{accountId}") {
+
+        fun createRoute(accountId: Int): String {
+            return "accountDetail/$accountId"
+        }
+    }
     object Transaction : Screen("transaction/{type}"){
         fun createRoute(type: String) = "transaction/$type"
     }
@@ -95,23 +102,18 @@ sealed class Screen(val route: String) {
 fun MainView(
     repository: BankRepository
 ){
+
     val viewModel: AccountsViewModel = viewModel(
         factory = AccountViewModelFactory(repository)
     )
+    val accounts by viewModel.accounts.collectAsState()
+
     val navController = rememberNavController()
 
     LaunchedEffect(Unit) {
-        viewModel.insertAccount(
-            Account(
-                id = 0,
-                type = "AHORRO",
-                badge = "AHORRO",
-                title = "Cuenta principal",
-                balance = 120000.0,
-                number = "1223"
-            )
-        )
+        viewModel.insertTestDataIfNeeded()
     }
+
 
     Scaffold(
         containerColor = AppBg,
@@ -128,7 +130,7 @@ fun MainView(
             composable(Screen.Home.route){
                 HomeContent(
                     navController = navController,
-                    viewModel = viewModel)
+                    accounts = accounts)
             }
 
             composable(Screen.Accounts.route){
@@ -139,9 +141,22 @@ fun MainView(
                 TransferView()
             }
 
-            composable(Screen.AccountDetail.route) {
-                AccountDetailView()
+            composable(
+                route = Screen.AccountDetail.route
+            ) { backStackEntry ->
+
+                val accountId =
+                    backStackEntry.arguments
+                        ?.getString("accountId")
+                        ?.toIntOrNull() ?: 0
+
+                AccountDetailView(
+                    accountId = accountId,
+                    viewModel = viewModel,
+                    navController = navController
+                )
             }
+
 
             composable(
                 route = Screen.Transaction.route
@@ -158,9 +173,7 @@ fun MainView(
 @Composable
 fun HomeContent(
     navController: NavHostController,
-    viewModel: AccountsViewModel) {
-
-    val accounts by viewModel.accounts.collectAsState()
+    accounts: List<Account>) {
 
     Column(
         modifier = Modifier
@@ -364,7 +377,7 @@ private fun InfoAccountCard(
     val badgeColor = when(account.badge) {
         "ACTIVA" -> BlueBadge
         "AHORRO" -> Accent
-        "PRESTAMO" -> Red
+        "PRESTAMO" -> Color(0xFFFF3B30)
         else -> Muted
     }
     Card(
@@ -462,7 +475,7 @@ fun BadgePill(
 ) {
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = Red
+        color = Accent
     ) {
         Text(
             text = text,
@@ -526,4 +539,24 @@ private fun DemoBottomBar(navController: NavHostController) {
             )
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HomeViewPreview(){
+    val navController = rememberNavController()
+
+    val fakeAccounts = listOf(
+        Account(
+            id = 1,
+            type = "AHORRO",
+            badge = "AHORRO",
+            title = "Cuenta Principal",
+            balance = 12000.0,
+            number = "1241"
+        )
+    )
+
+    HomeContent(navController = navController,
+        accounts = fakeAccounts)
 }

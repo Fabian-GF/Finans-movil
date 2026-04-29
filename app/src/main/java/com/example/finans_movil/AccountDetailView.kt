@@ -1,7 +1,8 @@
 package com.example.finans_movil
 
  import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.clickable
+ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+ import androidx.navigation.NavController
+ import com.example.finans_movil.Model.Account
+ import com.example.finans_movil.Viewmodel.AccountsViewModel
 
 private val AppBg = Color(0xFF000000)
 private val CardBg = Color(0xFF081A3A)
@@ -36,7 +40,14 @@ private val WhiteSoft = Color(0xFFF5F7FA)
 private val BlueBadge = Color(0xFF2D6BFF)
 
 @Composable
-fun AccountDetailView() {
+fun AccountDetailView(
+    accountId: Int,
+    viewModel: AccountsViewModel,
+    navController: NavController
+) {
+    val account = viewModel.getAccountById(accountId)
+
+    account ?: return
 
     Column(
         modifier = Modifier
@@ -49,7 +60,14 @@ fun AccountDetailView() {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = WhiteSoft)
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = null,
+                modifier = Modifier.clickable {
+                    navController.popBackStack()
+                },
+                tint = WhiteSoft
+            )
 
             Spacer(modifier = Modifier.width(10.dp))
 
@@ -63,7 +81,7 @@ fun AccountDetailView() {
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        AccountDetailCard()
+        AccountDetailCard(account)
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -72,7 +90,7 @@ fun AccountDetailView() {
 }
 
 @Composable
-fun AccountDetailCard() {
+fun AccountDetailCard(account: Account) {
 
     Card(
         shape = RoundedCornerShape(20.dp),
@@ -81,21 +99,21 @@ fun AccountDetailCard() {
         Column(modifier = Modifier.padding(20.dp)) {
 
             Row {
-                Text("Cuenta Corriente", color = Muted)
+                Text(account.type, color = Muted)
                 Spacer(modifier = Modifier.width(10.dp))
                 BadgePill("ACTIVO", BlueBadge, Color.White)
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Text("Cuenta Principal", color = WhiteSoft, fontSize = 20.sp)
+            Text(account.title, color = WhiteSoft, fontSize = 20.sp)
 
             Spacer(modifier = Modifier.height(20.dp))
 
             Text("Saldo Disponible", color = Muted)
 
             Text(
-                "$15,420.50",
+                "$${account.balance}",
                 color = WhiteSoft,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold
@@ -107,7 +125,7 @@ fun AccountDetailCard() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("**** **** **** 4532", color = MutedSoft)
+                Text("**** **** **** ${account.number.takeLast(4)}", color = MutedSoft)
                 Text("Copiar", color = Accent)
             }
         }

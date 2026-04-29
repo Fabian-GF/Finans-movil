@@ -146,7 +146,8 @@ private fun InfoAccountCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable{
-                navController.navigate(Screen.AccountDetail.route) },
+                navController.navigate(
+                    Screen.AccountDetail.createRoute(account.id)) },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg),
         border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)

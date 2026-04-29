@@ -1,5 +1,6 @@
 package com.example.finans_movil.Viewmodel
 
+import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.finans_movil.Data.Repository.BankRepository
@@ -40,6 +41,10 @@ class AccountsViewModel(
                 )
             }
         }
+    }
+
+    fun getAccountById(id: Int): Account? {
+        return accounts.value.find { it.id == id }
     }
 
 }
