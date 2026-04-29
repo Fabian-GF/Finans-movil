@@ -1,6 +1,5 @@
-package com.example.finans_movil
+package com.example.finans_movil.ui.screens
 
-import android.adservices.adid.AdId
 import android.annotation.SuppressLint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -96,6 +95,8 @@ sealed class Screen(val route: String) {
     object Transaction : Screen("transaction/{type}"){
         fun createRoute(type: String) = "transaction/$type"
     }
+
+    object CreateAccount : Screen("createAccount")
 }
 
 @Composable
@@ -165,6 +166,13 @@ fun MainView(
                 val type = backStackEntry.arguments?.getString("type") ?: "ingreso"
 
                 TransactionView(type = type)
+            }
+
+            composable(Screen.CreateAccount.route) {
+                CreateAccountView(
+                    navController = navController,
+                    viewModel = viewModel
+                )
             }
         }
     }

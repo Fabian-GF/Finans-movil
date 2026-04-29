@@ -9,6 +9,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.room.Room
 import com.example.finans_movil.Data.Local.AppDatabase
 import com.example.finans_movil.Data.Repository.BankRepository
+import com.example.finans_movil.ui.screens.MainView
+import com.example.finans_movil.ui.screens.TransactionView
 import com.example.finans_movil.ui.theme.FinansmovilTheme
 
 class MainActivity : ComponentActivity() {

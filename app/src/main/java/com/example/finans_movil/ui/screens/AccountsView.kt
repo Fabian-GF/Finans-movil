@@ -1,5 +1,6 @@
-package com.example.finans_movil
+package com.example.finans_movil.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,10 +17,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -28,9 +32,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import com.example.finans_movil.Model.Account
 import com.example.finans_movil.Viewmodel.AccountsViewModel
 
@@ -52,84 +58,53 @@ fun AccountsView(
 
     val accounts by viewModel.accounts.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppBg)
-            .padding(20.dp)
-    ) {
-        Text(
-            text = "Mis cuentas",
-            color = WhiteSoft,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
-        )
+    Scaffold(
+        containerColor = AppBg,
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(accounts) {account ->
-                InfoAccountCard(
-                    account = account,
-                    navController = navController
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    navController.navigate(Screen.CreateAccount.route)
+                },
+                containerColor = Accent
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Crear cuenta",
+                    tint = Color.Black
                 )
             }
         }
-    }
-        /* listOf(
-        HomeView(
-            type = "Cuenta Nómina",
-            badge = "ACTIVA",
-            title = "Cuenta Principal",
-            amount = "$12,430.80",
-            maskedNumber = "**** **** 1128",
-            badgeColor = BlueBadge
-        ),
-        HomeView(
-            type = "Ahorro",
-            badge = "AHORRO",
-            title = "Fondo Viaje",
-            amount = "$48,200.00",
-            maskedNumber = "**** **** 9041",
-            badgeColor = Accent
-        ),
-        HomeView(
-            type = "Crédito",
-            badge = "PRÉSTAMO",
-            title = "Tarjeta de Credito ",
-            amount = "-$2,300.00",
-            maskedNumber = "**** **** 9041",
-            badgeColor = Red
-        )
+    ) { paddingValues ->
 
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppBg)
-            .padding(20.dp)
-    ) {
-
-        Text(
-            text = "Mis Cuentas",
-            color = WhiteSoft,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(AppBg)
+                .padding(20.dp)
         ) {
-            items(accounts) { account ->
-                InfoAccountCard(account, navController)
+            Text(
+                text = "Mis cuentas",
+                color = WhiteSoft,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(accounts) {account ->
+                    InfoAccountCard(
+                        account = account,
+                        navController = navController
+                    )
+                }
             }
         }
-    } */
+    }
 }
 
 @Composable
@@ -150,7 +125,7 @@ private fun InfoAccountCard(
                     Screen.AccountDetail.createRoute(account.id)) },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg),
-        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
+        border = BorderStroke(1.dp, CardBorder)
     ) {
         Column(
             modifier = Modifier.padding(18.dp)
@@ -223,3 +198,23 @@ private fun InfoAccountCard(
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun InfoAccountCardPreview(){
+
+    val fakeAccount = Account(
+        id = 1,
+        type = "Cuenta Nómina",
+        badge = "ACTIVA",
+        title = "Cuenta Principal",
+        balance = 12430.80,
+        number = "**** **** 1128"
+    )
+    InfoAccountCard(
+        account =  fakeAccount,
+        navController = rememberNavController()
+    )
+
+}
+

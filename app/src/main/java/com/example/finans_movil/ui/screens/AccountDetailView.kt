@@ -1,4 +1,4 @@
-package com.example.finans_movil
+package com.example.finans_movil.ui.screens
 
  import androidx.compose.foundation.background
  import androidx.compose.foundation.clickable
