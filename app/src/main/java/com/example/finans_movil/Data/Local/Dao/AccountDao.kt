@@ -21,4 +21,13 @@ interface AccountDao {
 
     @Query("SELECT * FROM accounts")
     suspend fun getAccountsOnce(): List<AccountEntity>
+
+    @Query("UPDATE accounts SET balance = :newBalance WHERE id = :accountId")
+    suspend fun updateBalance(
+        accountId: Int,
+        newBalance: Double
+    )
+
+    @Query("SELECT * FROM accounts WHERE id = :accountId LIMIT 1")
+    suspend fun getAccountById(accountId: Int): AccountEntity
 }

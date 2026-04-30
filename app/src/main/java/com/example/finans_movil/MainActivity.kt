@@ -29,16 +29,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FinansmovilTheme {
-                MainView(repository)
+                MainView(
+                    repository = repository,
+                    database = db)
             }
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun MainViewPreview() {
-    FinansmovilTheme {
-        TransactionView("egreso")
-    }
-}

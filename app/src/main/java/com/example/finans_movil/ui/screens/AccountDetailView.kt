@@ -21,7 +21,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+ import androidx.compose.runtime.LaunchedEffect
+ import androidx.compose.runtime.collectAsState
+ import androidx.compose.runtime.getValue
+ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -29,7 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
  import androidx.navigation.NavController
  import com.example.finans_movil.Model.Account
+ import com.example.finans_movil.Model.Transaction
  import com.example.finans_movil.Viewmodel.AccountsViewModel
+ import com.example.finans_movil.Viewmodel.TransactionViewModel
 
 private val AppBg = Color(0xFF000000)
 private val CardBg = Color(0xFF081A3A)
@@ -43,9 +48,22 @@ private val BlueBadge = Color(0xFF2D6BFF)
 fun AccountDetailView(
     accountId: Int,
     viewModel: AccountsViewModel,
+    transactionViewModel: TransactionViewModel,
     navController: NavController
 ) {
     val account = viewModel.getAccountById(accountId)
+
+
+    val transactions by transactionViewModel
+        .transactions
+        .collectAsState()
+
+    LaunchedEffect(accountId) {
+
+        transactionViewModel.loadTransactions(
+            accountId
+        )
+    }
 
     account ?: return
 
@@ -85,7 +103,9 @@ fun AccountDetailView(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        MovementsSection()
+        MovementsSection(
+            transactions = transactions
+        )
     }
 }
 
@@ -140,25 +160,31 @@ data class Movement(
 )
 
 @Composable
-fun MovementsSection() {
+fun MovementsSection(
+    transactions: List<Transaction>
+) {
 
-    val movements = listOf(
-        Movement("Amazon.com", "Compras · Ayer", "-$85.99", false),
-        Movement("Pago de nómina", "Salario · 19 feb", "+$3,500.00", true),
-        Movement("Starbucks", "Café · Hoy", "-$12.50", false)
+    Text(
+        "Movimientos",
+        color = WhiteSoft,
+        fontSize = 18.sp
     )
-
-    Text("Movimientos", color = WhiteSoft, fontSize = 18.sp)
 
     Spacer(modifier = Modifier.height(10.dp))
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(
+            containerColor = CardBg
+        )
     ) {
 
         Column {
-            movements.forEachIndexed { index, m ->
+
+            transactions.forEachIndexed { index, t ->
+
+                val isPositive =
+                    t.type == "ingreso"
 
                 Row(
                     modifier = Modifier
@@ -171,31 +197,55 @@ fun MovementsSection() {
                         modifier = Modifier
                             .size(40.dp)
                             .background(
-                                if (m.isPositive) Color(0xFF0F3D2E) else Color(0xFF3D0F1E),
+                                if (isPositive)
+                                    Color(0xFF0F3D2E)
+                                else
+                                    Color(0xFF3D0F1E),
+
                                 RoundedCornerShape(50)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
+
                         Text(
-                            if (m.isPositive) "$" else "🛒",
+                            if (isPositive) "+" else "-",
                             color = WhiteSoft
                         )
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(m.title, color = WhiteSoft)
-                        Text(m.subtitle, color = MutedSoft, fontSize = 12.sp)
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+
+                        Text(
+                            t.description,
+                            color = WhiteSoft
+                        )
+
+                        Text(
+                            t.type,
+                            color = MutedSoft,
+                            fontSize = 12.sp
+                        )
                     }
 
                     Text(
-                        m.amount,
-                        color = if (m.isPositive) Accent else Color.Red
+                        text = if(isPositive)
+                            "+$${t.amount}"
+                        else
+                            "-$${t.amount}",
+
+                        color = if (isPositive)
+                            Accent
+                        else
+                            Color.Red
                     )
                 }
 
-                if (index != movements.lastIndex) {
+                if(index != transactions.lastIndex) {
+
                     Spacer(
                         modifier = Modifier
                             .fillMaxWidth()

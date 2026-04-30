@@ -30,11 +30,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.navOptions
 import com.example.finans_movil.Model.Account
 import com.example.finans_movil.Viewmodel.AccountsViewModel
 import kotlinx.coroutines.launch
-import kotlin.math.exp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -3,6 +3,7 @@ package com.example.finans_movil.Data.Local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.example.finans_movil.Data.Local.Dao.AccountDao
+import com.example.finans_movil.Data.Local.Dao.TransactionDao
 import com.example.finans_movil.Data.Local.Entities.AccountEntity
 import com.example.finans_movil.Data.Local.Entities.TransactionEntity
 
@@ -11,9 +12,12 @@ import com.example.finans_movil.Data.Local.Entities.TransactionEntity
         AccountEntity::class,
         TransactionEntity::class
     ],
-    version = 2
+    version = 4
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun accountDao(): AccountDao
+
+    abstract fun transactionDao(): TransactionDao
+
 }

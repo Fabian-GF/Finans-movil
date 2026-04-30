@@ -38,7 +38,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,10 +58,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.finans_movil.Data.Local.AppDatabase
 import com.example.finans_movil.Data.Repository.BankRepository
+import com.example.finans_movil.Data.Repository.TransactionRepository
 import com.example.finans_movil.Model.Account
+import com.example.finans_movil.Model.Transaction
 import com.example.finans_movil.Viewmodel.AccountsViewModel
 import com.example.finans_movil.Viewmodel.Factory.AccountViewModelFactory
+import com.example.finans_movil.Viewmodel.Factory.TransactionViewModelFactory
+import com.example.finans_movil.Viewmodel.TransactionViewModel
 
 private val AppBg = Color(0xFF000000)
 private val CardBg = Color(0xFF081A3A)
@@ -93,7 +97,8 @@ sealed class Screen(val route: String) {
         }
     }
     object Transaction : Screen("transaction/{type}"){
-        fun createRoute(type: String) = "transaction/$type"
+        fun createRoute(type: String): String {
+         return "transaction/$type"}
     }
 
     object CreateAccount : Screen("createAccount")
@@ -101,19 +106,29 @@ sealed class Screen(val route: String) {
 
 @Composable
 fun MainView(
-    repository: BankRepository
+    repository: BankRepository,
+    database: AppDatabase
 ){
 
     val viewModel: AccountsViewModel = viewModel(
         factory = AccountViewModelFactory(repository)
     )
+
+    val transactionViewModel: TransactionViewModel = viewModel(
+        factory = TransactionViewModelFactory(
+            TransactionRepository(
+                transactionDao = database.transactionDao(),
+                accountDao = database.accountDao()
+            )
+        )
+    )
+
     val accounts by viewModel.accounts.collectAsState()
 
     val navController = rememberNavController()
 
-    LaunchedEffect(Unit) {
-        viewModel.insertTestDataIfNeeded()
-    }
+    val transactions by transactionViewModel.transactions.collectAsState()
+
 
 
     Scaffold(
@@ -131,7 +146,8 @@ fun MainView(
             composable(Screen.Home.route){
                 HomeContent(
                     navController = navController,
-                    accounts = accounts)
+                    accounts = accounts,
+                    transactions = transactions)
             }
 
             composable(Screen.Accounts.route){
@@ -154,6 +170,7 @@ fun MainView(
                 AccountDetailView(
                     accountId = accountId,
                     viewModel = viewModel,
+                    transactionViewModel = transactionViewModel,
                     navController = navController
                 )
             }
@@ -165,7 +182,12 @@ fun MainView(
 
                 val type = backStackEntry.arguments?.getString("type") ?: "ingreso"
 
-                TransactionView(type = type)
+                TransactionView(
+                    type = type,
+                    navController = navController,
+                    viewModel = transactionViewModel,
+                    accounts = accounts
+                )
             }
 
             composable(Screen.CreateAccount.route) {
@@ -181,7 +203,8 @@ fun MainView(
 @Composable
 fun HomeContent(
     navController: NavHostController,
-    accounts: List<Account>) {
+    accounts: List<Account>,
+    transactions: List<Transaction>) {
 
     Column(
         modifier = Modifier
@@ -220,6 +243,12 @@ fun HomeContent(
 
             item {
                 Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            item {
+                MovementsSection(
+                    transactions = transactions
+                )
             }
         }
     }
@@ -327,7 +356,9 @@ private fun QuickActionCard(
         border = if (selected) null else BorderStroke(1.dp, Color(0xFF30415F))
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(vertical = 10.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -565,6 +596,27 @@ fun HomeViewPreview(){
         )
     )
 
-    HomeContent(navController = navController,
-        accounts = fakeAccounts)
+    // ✅ CORRECCIÓN: Crear una lista de objetos Transaction, no una función
+    val fakeTransactions = listOf(
+        Transaction(
+            id = 1,
+            accountId = 1,
+            description = "Compra Supermercado",
+            amount = 50.5,
+            type = "EGRESO"
+        ),
+        Transaction(
+            id = 2,
+            accountId = 1,
+            description = "Pago Nómina",
+            amount = 1500.0,
+            type = "INGRESO"
+        )
+    )
+
+    HomeContent(
+        navController = navController,
+        accounts = fakeAccounts,
+        transactions = fakeTransactions // ✅ Ahora los tipos coinciden
+    )
 }
