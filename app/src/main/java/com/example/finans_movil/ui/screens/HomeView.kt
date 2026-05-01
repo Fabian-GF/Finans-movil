@@ -61,12 +61,15 @@ import androidx.navigation.compose.rememberNavController
 import com.example.finans_movil.Data.Local.AppDatabase
 import com.example.finans_movil.Data.Repository.BankRepository
 import com.example.finans_movil.Data.Repository.TransactionRepository
+import com.example.finans_movil.Data.Repository.TransferRepository
 import com.example.finans_movil.Model.Account
 import com.example.finans_movil.Model.Transaction
 import com.example.finans_movil.Viewmodel.AccountsViewModel
 import com.example.finans_movil.Viewmodel.Factory.AccountViewModelFactory
 import com.example.finans_movil.Viewmodel.Factory.TransactionViewModelFactory
+import com.example.finans_movil.Viewmodel.Factory.TransferViewModelFactory
 import com.example.finans_movil.Viewmodel.TransactionViewModel
+import com.example.finans_movil.Viewmodel.TransferViewModel
 
 private val AppBg = Color(0xFF000000)
 private val CardBg = Color(0xFF081A3A)
@@ -123,13 +126,20 @@ fun MainView(
         )
     )
 
+    val tranferViewModel: TransferViewModel = viewModel(
+        factory = TransferViewModelFactory(
+            TransferRepository(
+                database.accountDao(),
+                database.transactionDao()
+            )
+        )
+    )
+
     val accounts by viewModel.accounts.collectAsState()
 
     val navController = rememberNavController()
 
     val transactions by transactionViewModel.transactions.collectAsState()
-
-
 
     Scaffold(
         containerColor = AppBg,
@@ -155,7 +165,10 @@ fun MainView(
             }
 
             composable(Screen.Transfer.route){
-                TransferView()
+                TransferView(
+                    accounts = accounts,
+                    viewModel = tranferViewModel
+                )
             }
 
             composable(
@@ -596,7 +609,6 @@ fun HomeViewPreview(){
         )
     )
 
-    // ✅ CORRECCIÓN: Crear una lista de objetos Transaction, no una función
     val fakeTransactions = listOf(
         Transaction(
             id = 1,
@@ -617,6 +629,6 @@ fun HomeViewPreview(){
     HomeContent(
         navController = navController,
         accounts = fakeAccounts,
-        transactions = fakeTransactions // ✅ Ahora los tipos coinciden
+        transactions = fakeTransactions
     )
 }

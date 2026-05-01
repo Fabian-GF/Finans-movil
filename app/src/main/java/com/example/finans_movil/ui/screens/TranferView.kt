@@ -11,13 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -33,7 +34,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import com.example.finans_movil.Model.Account
+import com.example.finans_movil.Viewmodel.TransferViewModel
 
 private val AppBg = Color(0xFF000000)
 private val CardBg = Color(0xFF081A3A)
@@ -43,7 +45,40 @@ private val MutedSoft = Color(0xFF6F7A92)
 private val WhiteSoft = Color(0xFFF5F7FA)
 
 @Composable
-fun TransferView() {
+fun TransferView(
+    accounts: List<Account>,
+    viewModel: TransferViewModel
+) {
+    if ( accounts.size < 2) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(AppBg)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            Text(
+                text = "Necesitas al menos 2 cuentas para realizar transferencias",
+                color = WhiteSoft
+            )
+        }
+        return
+    }
+
+    var fromAccount by remember {
+        mutableStateOf(accounts.first())
+    }
+
+    var toAccount by remember {
+        mutableStateOf(accounts.last())
+    }
+
+    var amount by remember {
+        mutableStateOf("")
+    }
+
 
     Column(
         modifier = Modifier
@@ -55,122 +90,139 @@ fun TransferView() {
         Text("DESDE", color = Muted, fontSize = 13.sp)
         Spacer(modifier = Modifier.height(8.dp))
 
-        FromAccountCard()
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Text("TRANSFERENCIAS RECIENTES", color = Muted, fontSize = 13.sp)
-        Spacer(modifier = Modifier.height(8.dp))
-
-        RecentTransfers()
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Text("MONTO", color = Muted, fontSize = 13.sp)
-        Spacer(modifier = Modifier.height(8.dp))
-
-        AmountSection()
+        AccountSelector(
+            selectedAccount = fromAccount,
+            accounts = accounts,
+            onAccountSelected = {
+                fromAccount = it
+            }
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
 
         Text("PARA", color = Muted, fontSize = 13.sp)
         Spacer(modifier = Modifier.height(8.dp))
 
-        ToAccountInput()
-    }
-}
+        AccountSelector(
+            selectedAccount = toAccount,
+            accounts = accounts.filter { it != fromAccount },
+            onAccountSelected = {
+                toAccount = it
+            }
+        )
 
-@Composable
-fun FromAccountCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text("MONTO", color = Muted, fontSize = 13.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        AmountSection(
+            amount = amount,
+            onAmountChange = {
+                amount = it
+            }
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(
+            onClick = {
+
+                viewModel.transfer(
+                    fromAccountId = fromAccount.id,
+                    toAccountId = toAccount.id,
+                    amount = amount.toDoubleOrNull() ?: 0.0
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                "Cuenta Principal - $15,420.50",
-                color = WhiteSoft,
-                fontWeight = FontWeight.Bold
-            )
 
-            Icon(Icons.Default.ChevronRight, null, tint = Muted)
+            Text("Transferir")
         }
     }
 }
 
-data class Contact(
-    val initials: String,
-    val name: String,
-    val account: String
-)
-
 @Composable
-fun RecentTransfers() {
+fun AccountSelector(
+    selectedAccount: Account,
+    accounts: List<Account>,
+    onAccountSelected: (Account) -> Unit
+) {
 
-    val contacts = listOf(
-        Contact("MG", "María García", "**** 1234"),
-        Contact("JP", "Juan Pérez", "**** 5678"),
-        Contact("AL", "Ana López", "**** 9012")
-    )
+    var expanded by remember { mutableStateOf(false) }
 
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
-    ) {
+    Box {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBg)
+        ) {
 
-        Column {
-            contacts.forEachIndexed { index, contact ->
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Column {
+                    Text(
+                        selectedAccount.title,
+                        color = WhiteSoft,
+                        fontWeight = FontWeight.Bold
+                    )
 
-                    // círculo iniciales
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Accent, RoundedCornerShape(50)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(contact.initials, color = Color.Black)
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(contact.name, color = WhiteSoft)
-                        Text(contact.account, color = MutedSoft, fontSize = 12.sp)
-                    }
-
-                    Icon(Icons.Default.ChevronRight, null, tint = Muted)
-                }
-
-                if (index != contacts.lastIndex) {
-                    Spacer(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(Color(0xFF1A2A47))
+                    Text(
+                        "$${selectedAccount.balance}",
+                        color = MutedSoft,
+                        fontSize = 12.sp
                     )
                 }
+
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = Muted
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+
+            accounts.forEach { account ->
+
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(account.title)
+                            Text(
+                                "$${account.balance}",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    },
+                    onClick = {
+                        onAccountSelected(account)
+                        expanded = false
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun AmountSection() {
-
-    var amount by remember { mutableStateOf("0.00") }
+fun AmountSection(
+    amount: String,
+    onAmountChange: (String) -> Unit
+) {
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -191,52 +243,52 @@ fun AmountSection() {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+
                 listOf("50", "100", "200", "500").forEach {
+
                     QuickAmountButton(it) {
-                        amount = it
+                        onAmountChange(it)
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TextField(
+                value = amount,
+                onValueChange = onAmountChange,
+                placeholder = {
+                    Text("Ingrese monto", color = MutedSoft)
+                },
+                colors = TextFieldDefaults.colors(
+                    unfocusedContainerColor = CardBg,
+                    focusedContainerColor = CardBg,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    focusedTextColor = WhiteSoft,
+                    unfocusedTextColor = WhiteSoft
+                )
+            )
         }
     }
 }
 
 @Composable
-fun QuickAmountButton(value: String, onClick: () -> Unit) {
+fun QuickAmountButton(
+    value: String,
+    onClick: () -> Unit
+) {
+
     Card(
         modifier = Modifier.clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2A47))
     ) {
+
         Text(
             "$$value",
             modifier = Modifier.padding(12.dp),
             color = WhiteSoft
-        )
-    }
-}
-
-@Composable
-fun ToAccountInput() {
-
-    var text by remember { mutableStateOf("") }
-
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
-    ) {
-        TextField(
-            value = text,
-            onValueChange = { text = it },
-            placeholder = {
-                Text("Nombre o número de cuenta", color = MutedSoft)
-            },
-            colors = TextFieldDefaults.colors(
-                unfocusedContainerColor = CardBg,
-                focusedContainerColor = CardBg,
-                unfocusedIndicatorColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent
-            )
         )
     }
 }
