@@ -137,6 +137,10 @@ fun MainView(
 
     val accounts by viewModel.accounts.collectAsState()
 
+    val totalAhorros = accounts
+        .filter { it.type == "AHORRO" }
+        .sumOf { it.balance }
+
     val navController = rememberNavController()
 
     val transactions by transactionViewModel.transactions.collectAsState()
@@ -157,7 +161,8 @@ fun MainView(
                 HomeContent(
                     navController = navController,
                     accounts = accounts,
-                    transactions = transactions)
+                    transactions = transactions,
+                    totalAhorros = totalAhorros)
             }
 
             composable(Screen.Accounts.route){
@@ -217,7 +222,8 @@ fun MainView(
 fun HomeContent(
     navController: NavHostController,
     accounts: List<Account>,
-    transactions: List<Transaction>) {
+    transactions: List<Transaction>,
+    totalAhorros: Double) {
 
     Column(
         modifier = Modifier
@@ -234,7 +240,7 @@ fun HomeContent(
             }
 
             item {
-                HeroBalanceCard(navController)
+                HeroBalanceCard(navController, totalAhorros)
             }
 
             item {
@@ -269,7 +275,9 @@ fun HomeContent(
 
 //tarjeta superior
 @Composable
-private fun HeroBalanceCard(navController: NavHostController) {
+private fun HeroBalanceCard(
+    navController: NavHostController,
+    totalAhorros: Double) {
     var isVisible by remember { mutableStateOf(true) }
 
     Card(
@@ -297,7 +305,7 @@ private fun HeroBalanceCard(navController: NavHostController) {
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = if (isVisible) "$61,830.25" else "••••••",
+                        text = if (isVisible) "$$totalAhorros" else "••••••",
                         color = WhiteSoft,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
@@ -597,7 +605,6 @@ private fun DemoBottomBar(navController: NavHostController) {
 @Composable
 fun HomeViewPreview(){
     val navController = rememberNavController()
-
     val fakeAccounts = listOf(
         Account(
             id = 1,
@@ -626,9 +633,12 @@ fun HomeViewPreview(){
         )
     )
 
+    val totalAhorros = 12000.0
+
     HomeContent(
         navController = navController,
         accounts = fakeAccounts,
-        transactions = fakeTransactions
+        transactions = fakeTransactions,
+        totalAhorros = totalAhorros
     )
 }

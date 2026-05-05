@@ -4,7 +4,7 @@ La aplicación tendrá laS siguientes pantallas
 
 1. Pantalla : Inicio
 
-![screen1](images/Mockup-Inicio.png)
+![screen1](images/Mockup-Inicio.jpg)
 
 2. Pantalla : Cuentas
 
@@ -16,7 +16,7 @@ La aplicación tendrá laS siguientes pantallas
 
 4. Pantalla : Transferencias
 
-![screen4](images/Mockup-Transferencias.png)
+![screen4](images/Mockup-Transferencias.jpg)
 
 Adicionalmente, se crea la Pantalla de Ingreso y Egreso que no se tenía prevista en la primera entrega.
 

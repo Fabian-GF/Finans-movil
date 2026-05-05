@@ -244,7 +244,7 @@ fun AmountSection(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
 
-                listOf("50", "100", "200", "500").forEach {
+                listOf("10000", "20000", "50000").forEach {
 
                     QuickAmountButton(it) {
                         onAmountChange(it)

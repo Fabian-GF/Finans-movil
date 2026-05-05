@@ -1,7 +1,7 @@
 # Log de cambios del proyecto
 
 Todos los cambios representativos del proyecto serán documentados en este archivo.
-Tomando como referencia la plantilla de proyecto entregada por el maestro, agregamos los ítems requeridos en el primer entregable.
+
 <!-- ## [version] - yyyy-mm-dd
 
 ### Agregado
@@ -19,6 +19,23 @@ Tomando como referencia la plantilla de proyecto entregada por el maestro, agreg
 ### Eliminado
 
 - ... -->
+
+## [0.2.0] - 2026-05-04
+
+### Agregado
+
+- Arquitectura MVVM
+- Bibliote ROOM para manejo de datos con base de datos
+- Funcionalidad de aplicacion
+
+### Corregido
+
+- Se realiza cambio de logo
+- Se corrige funcionalidad de boton retroceder en Screen AccountDetailView
+
+## Cambiado
+
+- Se realiza cambio en los mockups por ajustes de funcionalidad
 
 ## [0.1.0] - 2026-03-31
 
