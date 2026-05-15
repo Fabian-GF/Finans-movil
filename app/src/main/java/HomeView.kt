@@ -25,26 +25,33 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -72,35 +79,59 @@ data class DemoAccount(
     val title: String,
     val balanceLabel: String,
     val maskedNumber: String,
+    val currency: MoneyCurrency = MoneyCurrency.COP,
     val badgeColor: Color,
     val badgeTextColor: Color = Color.White,
     val movements: List<AccountMovement>
 ) {
-    val balanceCents: Long
-        get() = movements.sumOf { it.amountCents }
+    val balanceAmount: Long
+        get() = movements.sumOf { it.amount }
 }
 
 data class AccountMovement(
     val title: String,
     val subtitle: String,
-    val amountCents: Long
+    val amount: Long
 ) {
     val isIncome: Boolean
-        get() = amountCents >= 0
+        get() = amount >= 0
+}
+
+data class BankNotification(
+    val title: String,
+    val accountTitle: String,
+    val amount: Long,
+    val currency: MoneyCurrency,
+    val subtitle: String
+)
+
+enum class MoneyCurrency(
+    val code: String,
+    val symbol: String,
+    val groupingSeparator: Char
+) {
+    COP("COP", "$", '.'),
+    USD("USD", "US$", ','),
+    EUR("EUR", "€", '.')
 }
 
 private enum class AppSection {
     Home,
     Accounts,
+    Notifications,
     Transfer
 }
 
 @Composable
 fun HomeView() {
-    val accounts = remember { demoAccounts() }
+    val accounts = remember { mutableStateListOf(*demoAccounts().toTypedArray()) }
+    val notifications = remember { mutableStateListOf<BankNotification>() }
     var selectedSection by remember { mutableStateOf(AppSection.Home) }
     var selectedAccount by remember { mutableStateOf<DemoAccount?>(null) }
-    val totalBalanceCents = accounts.sumOf { it.balanceCents }
+    var creatingAccount by remember { mutableStateOf(false) }
+    val totalBalanceAmount = accounts
+        .filter { it.currency == MoneyCurrency.COP }
+        .sumOf { it.balanceAmount }
 
     Scaffold(
         containerColor = AppBg,
@@ -110,6 +141,7 @@ fun HomeView() {
                 onSectionSelected = {
                     selectedSection = it
                     selectedAccount = null
+                    creatingAccount = false
                 }
             )
         }
@@ -118,22 +150,62 @@ fun HomeView() {
             AccountDetailContent(
                 account = selectedAccount!!,
                 modifier = Modifier.padding(innerPadding),
-                onBack = { selectedAccount = null }
+                onBack = { selectedAccount = null },
+                onSavingsMovement = { account, movement ->
+                    val updatedAccount = account.copy(movements = listOf(movement) + account.movements)
+                    val index = accounts.indexOf(account)
+                    if (index >= 0) {
+                        accounts[index] = updatedAccount
+                    }
+                    selectedAccount = updatedAccount
+                    notifications.add(
+                        0,
+                        BankNotification(
+                            title = movement.title,
+                            accountTitle = account.title,
+                            amount = movement.amount,
+                            currency = account.currency,
+                            subtitle = movement.subtitle
+                        )
+                    )
+                }
             )
         } else {
             when (selectedSection) {
                 AppSection.Home -> HomeContent(
-                    totalBalanceCents = totalBalanceCents,
+                    totalBalanceAmount = totalBalanceAmount,
                     accounts = accounts,
                     onAccountClick = { selectedAccount = it },
-                    onSeeAllClick = { selectedSection = AppSection.Accounts },
+                    onSeeAllClick = {
+                        selectedSection = AppSection.Accounts
+                        creatingAccount = false
+                    },
                     modifier = Modifier.padding(innerPadding)
                 )
 
-                AppSection.Accounts -> AccountsContent(
-                    accounts = accounts,
-                    modifier = Modifier.padding(innerPadding),
-                    onAccountClick = { selectedAccount = it }
+                AppSection.Accounts -> {
+                    if (creatingAccount) {
+                        CreateAccountContent(
+                            modifier = Modifier.padding(innerPadding),
+                            onBack = { creatingAccount = false },
+                            onCreate = { account ->
+                                accounts.add(account)
+                                creatingAccount = false
+                            }
+                        )
+                    } else {
+                        AccountsContent(
+                            accounts = accounts,
+                            modifier = Modifier.padding(innerPadding),
+                            onAccountClick = { selectedAccount = it },
+                            onCreateAccountClick = { creatingAccount = true }
+                        )
+                    }
+                }
+
+                AppSection.Notifications -> NotificationsContent(
+                    notifications = notifications,
+                    modifier = Modifier.padding(innerPadding)
                 )
 
                 AppSection.Transfer -> TransferContent(
@@ -146,7 +218,7 @@ fun HomeView() {
 
 @Composable
 private fun HomeContent(
-    totalBalanceCents: Long,
+    totalBalanceAmount: Long,
     accounts: List<DemoAccount>,
     onAccountClick: (DemoAccount) -> Unit,
     onSeeAllClick: () -> Unit,
@@ -167,7 +239,7 @@ private fun HomeContent(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             item { Spacer(modifier = Modifier.height(36.dp)) }
-            item { HeroBalanceCard(totalBalanceCents = totalBalanceCents) }
+            item { HeroBalanceCard(totalBalanceAmount = totalBalanceAmount) }
             item { Spacer(modifier = Modifier.height(178.dp)) }
             item {
                 AccountsPreviewHeader(
@@ -197,7 +269,8 @@ private fun HomeContent(
 private fun AccountsContent(
     accounts: List<DemoAccount>,
     modifier: Modifier = Modifier,
-    onAccountClick: (DemoAccount) -> Unit
+    onAccountClick: (DemoAccount) -> Unit,
+    onCreateAccountClick: () -> Unit
 ) {
     val listState = rememberLazyListState()
 
@@ -215,12 +288,28 @@ private fun AccountsContent(
         ) {
             item {
                 Spacer(modifier = Modifier.height(54.dp))
-                Text(
-                    text = "Mis Cuentas",
-                    color = WhiteSoft,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Mis Cuentas",
+                        color = WhiteSoft,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Button(onClick = onCreateAccountClick) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Nueva")
+                    }
+                }
             }
             items(accounts) { account ->
                 InfoAccountCard(
@@ -238,6 +327,243 @@ private fun AccountsContent(
                 .padding(top = 16.dp, end = 6.dp, bottom = 16.dp)
                 .fillMaxHeight()
         )
+    }
+}
+
+@Composable
+private fun CreateAccountContent(
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit,
+    onCreate: (DemoAccount) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf("Cuenta de ahorro") }
+    var initialAmount by remember { mutableStateOf("") }
+    var selectedCurrency by remember { mutableStateOf(MoneyCurrency.COP) }
+    var currencyMenuExpanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(AppBg)
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Spacer(modifier = Modifier.height(54.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Volver",
+                tint = WhiteSoft,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clickable(onClick = onBack)
+            )
+
+            Spacer(modifier = Modifier.width(18.dp))
+
+            Text(
+                text = "Nueva cuenta",
+                color = WhiteSoft,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        OutlinedTextField(
+            value = title,
+            onValueChange = { title = it },
+            label = { Text("Nombre") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = type,
+            onValueChange = { type = it },
+            label = { Text("Tipo") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = initialAmount,
+            onValueChange = { value ->
+                initialAmount = normalizeIntegerAmountInput(value)
+            },
+            label = { Text("Saldo inicial entero") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Box {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clickable { currencyMenuExpanded = true },
+                shape = RoundedCornerShape(8.dp),
+                color = Color.Transparent,
+                border = BorderStroke(1.dp, MutedSoft)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Divisa: ${selectedCurrency.code}",
+                        color = WhiteSoft,
+                        fontSize = 16.sp
+                    )
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = WhiteSoft
+                    )
+                }
+            }
+
+            DropdownMenu(
+                expanded = currencyMenuExpanded,
+                onDismissRequest = { currencyMenuExpanded = false }
+            ) {
+                MoneyCurrency.values().forEach { currency ->
+                    DropdownMenuItem(
+                        text = { Text("${currency.code} ${currency.symbol}") },
+                        onClick = {
+                            selectedCurrency = currency
+                            currencyMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Button(
+            enabled = title.isNotBlank() && type.isNotBlank(),
+            onClick = {
+                val amount = initialAmount.toLongOrNull() ?: 0L
+                onCreate(
+                    DemoAccount(
+                        type = type.trim(),
+                        badge = selectedCurrency.code,
+                        title = title.trim(),
+                        balanceLabel = "Disponible",
+                        maskedNumber = "**** **** ${System.currentTimeMillis().toString().takeLast(4)}",
+                        currency = selectedCurrency,
+                        badgeColor = if (selectedCurrency == MoneyCurrency.COP) Accent else BlueBadge,
+                        badgeTextColor = if (selectedCurrency == MoneyCurrency.COP) Color.Black else Color.White,
+                        movements = if (amount != 0L) {
+                            listOf(AccountMovement("Saldo inicial", "Apertura - Hoy", amount))
+                        } else {
+                            emptyList()
+                        }
+                    )
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Crear cuenta")
+        }
+    }
+}
+
+@Composable
+private fun NotificationsContent(
+    notifications: List<BankNotification>,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .background(AppBg)
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.height(54.dp))
+            Text(
+                text = "Notificaciones",
+                color = WhiteSoft,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        if (notifications.isEmpty()) {
+            item {
+                Text(
+                    text = "Aún no tienes movimientos guardados.",
+                    color = Muted,
+                    fontSize = 18.sp
+                )
+            }
+        } else {
+            items(notifications) { notification ->
+                NotificationCard(notification = notification)
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(10.dp)) }
+    }
+}
+
+@Composable
+private fun NotificationCard(notification: BankNotification) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBg),
+        border = BorderStroke(1.dp, CardBorder)
+    ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = if (notification.amount >= 0) Color(0xFF0C4927) else Color(0xFF4B071A)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = WhiteSoft,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = notification.title,
+                    color = WhiteSoft,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "${notification.accountTitle} · ${notification.subtitle}",
+                    color = MutedSoft,
+                    fontSize = 14.sp
+                )
+            }
+
+            Text(
+                text = formatMoney(notification.amount, notification.currency),
+                color = if (notification.amount >= 0) Accent else Danger,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -302,7 +628,7 @@ private fun ScrollBarIndicator(
 }
 
 @Composable
-private fun HeroBalanceCard(totalBalanceCents: Long) {
+private fun HeroBalanceCard(totalBalanceAmount: Long) {
     var showBalance by remember { mutableStateOf(true) }
     var selectedType by remember { mutableStateOf<TransactionType?>(null) }
 
@@ -322,7 +648,7 @@ private fun HeroBalanceCard(totalBalanceCents: Long) {
             ) {
                 Column {
                     Text(
-                        text = "Balance Total",
+                        text = "Balance Total COP",
                         color = Muted,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Medium
@@ -331,7 +657,7 @@ private fun HeroBalanceCard(totalBalanceCents: Long) {
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = if (showBalance) formatMoney(totalBalanceCents) else "--------",
+                        text = if (showBalance) formatMoney(totalBalanceAmount, MoneyCurrency.COP) else "--------",
                         color = WhiteSoft,
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold
@@ -474,7 +800,8 @@ private fun InfoAccountCard(
 private fun AccountDetailContent(
     account: DemoAccount,
     modifier: Modifier = Modifier,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onSavingsMovement: (DemoAccount, AccountMovement) -> Unit
 ) {
     LazyColumn(
         modifier = modifier
@@ -521,6 +848,17 @@ private fun AccountDetailContent(
             }
         }
 
+        if (account.isSavingsAccount()) {
+            item {
+                SavingsAccountActions(
+                    account = account,
+                    onMovementCreated = { movement ->
+                        onSavingsMovement(account, movement)
+                    }
+                )
+            }
+        }
+
         item {
             Text(
                 text = "Movimientos",
@@ -539,7 +877,10 @@ private fun AccountDetailContent(
             ) {
                 Column {
                     account.movements.forEachIndexed { index, movement ->
-                        MovementRow(movement = movement)
+                        MovementRow(
+                            movement = movement,
+                            currency = account.currency
+                        )
                         if (index < account.movements.lastIndex) {
                             Box(
                                 modifier = Modifier
@@ -554,6 +895,99 @@ private fun AccountDetailContent(
         }
 
         item { Spacer(modifier = Modifier.height(10.dp)) }
+    }
+}
+
+@Composable
+private fun SavingsAccountActions(
+    account: DemoAccount,
+    onMovementCreated: (AccountMovement) -> Unit
+) {
+    var notificationName by remember { mutableStateOf("") }
+    var amountInput by remember { mutableStateOf("") }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBg),
+        border = BorderStroke(1.dp, CardBorder)
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = "Mover dinero",
+                color = WhiteSoft,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            OutlinedTextField(
+                value = notificationName,
+                onValueChange = { notificationName = it },
+                label = { Text("Nombre de la notificación") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = amountInput,
+                onValueChange = { amountInput = normalizeIntegerAmountInput(it) },
+                label = { Text("Monto entero") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    enabled = notificationName.isNotBlank() && normalizedAmountOrZero(amountInput) != 0L,
+                    onClick = {
+                        val amount = kotlin.math.abs(normalizedAmountOrZero(amountInput))
+                        onMovementCreated(
+                            AccountMovement(
+                                title = notificationName.trim(),
+                                subtitle = "Consignación · Hoy",
+                                amount = amount
+                            )
+                        )
+                        notificationName = ""
+                        amountInput = ""
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(text = "Consignar")
+                }
+
+                Button(
+                    enabled = notificationName.isNotBlank() && normalizedAmountOrZero(amountInput) != 0L,
+                    onClick = {
+                        val amount = -kotlin.math.abs(normalizedAmountOrZero(amountInput))
+                        onMovementCreated(
+                            AccountMovement(
+                                title = notificationName.trim(),
+                                subtitle = "Extracción · Hoy",
+                                amount = amount
+                            )
+                        )
+                        notificationName = ""
+                        amountInput = ""
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(text = "Extraer")
+                }
+            }
+
+            Text(
+                text = "Saldo actual: ${formatMoney(account.balanceAmount, account.currency)}",
+                color = Muted,
+                fontSize = 15.sp
+            )
+        }
     }
 }
 
@@ -623,7 +1057,7 @@ private fun AccountCardContent(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = formatMoney(account.balanceCents),
+            text = formatMoney(account.balanceAmount, account.currency),
             color = WhiteSoft,
             fontSize = if (compact) 21.sp else 32.sp,
             fontWeight = FontWeight.Bold
@@ -640,7 +1074,10 @@ private fun AccountCardContent(
 }
 
 @Composable
-private fun MovementRow(movement: AccountMovement) {
+private fun MovementRow(
+    movement: AccountMovement,
+    currency: MoneyCurrency
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -680,7 +1117,7 @@ private fun MovementRow(movement: AccountMovement) {
         }
 
         Text(
-            text = formatMoney(movement.amountCents),
+            text = formatMoney(movement.amount, currency),
             color = if (movement.isIncome) Accent else Danger,
             fontSize = 20.sp,
             fontWeight = FontWeight.Medium
@@ -716,6 +1153,7 @@ private fun DemoBottomBar(
     val items = listOf(
         BottomItem("Inicio", Icons.Default.Home, AppSection.Home),
         BottomItem("Cuentas", Icons.Default.AccountBalanceWallet, AppSection.Accounts),
+        BottomItem("Avisos", Icons.Default.Notifications, AppSection.Notifications),
         BottomItem("Transferir", Icons.Default.SwapHoriz, AppSection.Transfer)
     )
 
@@ -771,10 +1209,10 @@ private fun demoAccounts() = listOf(
         maskedNumber = "**** **** 1128",
         badgeColor = BlueBadge,
         movements = listOf(
-            AccountMovement("Pago de nómina", "Salario · 19 feb", 13_000_00),
-            AccountMovement("Amazon.com", "Compras · Ayer", -85_99),
-            AccountMovement("Transferencia enviada", "Egreso · Hoy", -480_71),
-            AccountMovement("Starbucks", "Café · Hoy", -2_50)
+            AccountMovement("Pago de nómina", "Salario · 19 feb", 13_000_000),
+            AccountMovement("Amazon.com", "Compras · Ayer", -85_900),
+            AccountMovement("Transferencia enviada", "Egreso · Hoy", -480_700),
+            AccountMovement("Starbucks", "Café · Hoy", -12_500)
         )
     ),
     DemoAccount(
@@ -786,9 +1224,9 @@ private fun demoAccounts() = listOf(
         badgeColor = Accent,
         badgeTextColor = Color.Black,
         movements = listOf(
-            AccountMovement("Aporte inicial", "Ahorro · 15 feb", 50_000_00),
-            AccountMovement("Reserva hotel", "Viajes · Ayer", -420_00),
-            AccountMovement("Compra de tiquetes", "Viajes · 20 feb", -1_380_00)
+            AccountMovement("Aporte inicial", "Ahorro · 15 feb", 50_000_000),
+            AccountMovement("Reserva hotel", "Viajes · Ayer", -420_000),
+            AccountMovement("Compra de tiquetes", "Viajes · 20 feb", -1_380_000)
         )
     ),
     DemoAccount(
@@ -799,23 +1237,35 @@ private fun demoAccounts() = listOf(
         maskedNumber = "**** **** 9041",
         badgeColor = Danger,
         movements = listOf(
-            AccountMovement("Pago recibido", "Abono · Hoy", 500_00),
-            AccountMovement("Amazon.com", "Compras · Ayer", -985_99),
-            AccountMovement("Cuota préstamo", "Crédito · 19 feb", -1_801_51),
-            AccountMovement("Starbucks", "Café · Hoy", -12_50)
+            AccountMovement("Pago recibido", "Abono · Hoy", 500_000),
+            AccountMovement("Amazon.com", "Compras · Ayer", -985_900),
+            AccountMovement("Cuota préstamo", "Crédito · 19 feb", -1_801_500),
+            AccountMovement("Starbucks", "Café · Hoy", -12_500)
         )
     )
 )
 
-private fun formatMoney(cents: Long): String {
-    val sign = if (cents < 0) "-" else ""
-    val absolute = kotlin.math.abs(cents)
-    val whole = absolute / 100
-    val decimals = absolute % 100
-    return "$sign\$${formatThousands(whole)}.${decimals.toString().padStart(2, '0')}"
+private fun formatMoney(amount: Long, currency: MoneyCurrency): String {
+    val sign = if (amount < 0) "-" else ""
+    val absolute = kotlin.math.abs(amount)
+    return "$sign${currency.symbol} ${formatThousands(absolute, currency.groupingSeparator)} ${currency.code}"
 }
 
-private fun formatThousands(value: Long): String {
+private fun DemoAccount.isSavingsAccount(): Boolean {
+    return type.contains("ahorro", ignoreCase = true) || badge.equals("AHORRO", ignoreCase = true)
+}
+
+private fun normalizedAmountOrZero(value: String): Long {
+    return normalizeIntegerAmountInput(value).toLongOrNull() ?: 0L
+}
+
+private fun normalizeIntegerAmountInput(value: String): String {
+    val hasNegativeSign = value.contains('-')
+    val digits = value.filter { it.isDigit() }
+    return if (hasNegativeSign) "-$digits" else digits
+}
+
+private fun formatThousands(value: Long, separator: Char): String {
     val raw = value.toString()
-    return raw.reversed().chunked(3).joinToString(",").reversed()
+    return raw.reversed().chunked(3).joinToString(separator.toString()).reversed()
 }
