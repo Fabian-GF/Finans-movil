@@ -39,6 +39,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.finans_movil.Model.Account
 import com.example.finans_movil.Viewmodel.AccountsViewModel
+import com.example.finans_movil.ui.utilities.formatCOP
 
 
 private val AppBg = Color(0xFF000000)
@@ -50,6 +51,7 @@ private val Muted = Color(0xFF9FAAC0)
 private val MutedSoft = Color(0xFF6F7A92)
 private val WhiteSoft = Color(0xFFF5F7FA)
 private val BlueBadge = Color(0xFF2D6BFF)
+
 
 @Composable
 fun AccountsView(
@@ -117,6 +119,7 @@ private fun InfoAccountCard(
         "PRESTAMO" -> Color.Companion.Red
         else -> Muted
     }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -144,8 +147,8 @@ private fun InfoAccountCard(
 
                 BadgePill(
                     text = account.badge,
-                    backgroundColor = Red,
-                    textColor = Color.White
+                    backgroundColor = badgeColor,
+                    textColor = Color.Black
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -183,7 +186,7 @@ private fun InfoAccountCard(
                 verticalAlignment = Alignment.Bottom
             ) {
                 Text(
-                    text = "$${account.balance}",
+                    text = formatCOP(account.balance),
                     color = WhiteSoft,
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Bold

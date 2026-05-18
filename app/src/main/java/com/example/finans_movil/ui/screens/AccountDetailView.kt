@@ -44,6 +44,17 @@ private val MutedSoft = Color(0xFF6F7A92)
 private val WhiteSoft = Color(0xFFF5F7FA)
 private val BlueBadge = Color(0xFF2D6BFF)
 
+// Formato de moneda
+private fun formatCOP(amount: Double): String {
+    val locale   = java.util.Locale("es", "CO")
+    val formatter = java.text.NumberFormat.getNumberInstance(locale).apply {
+        maximumFractionDigits = 0
+        minimumFractionDigits = 0
+        isGroupingUsed        = true
+    }
+    return "$ ${formatter.format(amount)} COP"
+}
+
 @Composable
 fun AccountDetailView(
     accountId: Int,
@@ -66,6 +77,7 @@ fun AccountDetailView(
     }
 
     account ?: return
+
 
     Column(
         modifier = Modifier
@@ -112,6 +124,12 @@ fun AccountDetailView(
 @Composable
 fun AccountDetailCard(account: Account) {
 
+    val badgeColor = when (account.badge) {
+        "EFECTIVO"   -> BlueBadge
+        "AHORRO"   -> Accent
+        "PRESTAMO" -> Color.Companion.Red
+        else       -> Muted
+    }
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg)
@@ -121,7 +139,7 @@ fun AccountDetailCard(account: Account) {
             Row {
                 Text(account.type, color = Muted)
                 Spacer(modifier = Modifier.width(10.dp))
-                BadgePill("ACTIVO", BlueBadge, Color.White)
+                BadgePill(account.type, badgeColor, Color.Black)
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -133,7 +151,7 @@ fun AccountDetailCard(account: Account) {
             Text("Saldo Disponible", color = Muted)
 
             Text(
-                "$${account.balance}",
+                "${formatCOP(account.balance)}",
                 color = WhiteSoft,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold
@@ -233,9 +251,9 @@ fun MovementsSection(
 
                     Text(
                         text = if(isPositive)
-                            "+$${t.amount}"
+                            "+${formatCOP(t.amount)}"
                         else
-                            "-$${t.amount}",
+                            "-${formatCOP(t.amount)}",
 
                         color = if (isPositive)
                             Accent

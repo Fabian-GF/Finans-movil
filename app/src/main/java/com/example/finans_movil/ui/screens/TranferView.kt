@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Button
@@ -32,53 +33,53 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.finans_movil.Model.Account
 import com.example.finans_movil.Viewmodel.TransferViewModel
+import com.example.finans_movil.ui.utilities.ThousandsSeparatorTransformation
+import com.example.finans_movil.ui.utilities.formatCOP
+import com.example.finans_movil.ui.utilities.formatCOPLong
 
-private val AppBg = Color(0xFF000000)
-private val CardBg = Color(0xFF081A3A)
-private val Accent = Color(0xFF25FF00)
-private val Muted = Color(0xFF9FAAC0)
+private val AppBg     = Color(0xFF000000)
+private val CardBg    = Color(0xFF081A3A)
+private val Accent    = Color(0xFF25FF00)
+private val Muted     = Color(0xFF9FAAC0)
 private val MutedSoft = Color(0xFF6F7A92)
 private val WhiteSoft = Color(0xFFF5F7FA)
 
+// Tipos de cuenta habilitados para transferencias
+private val TRANSFER_TYPES = setOf("AHORRO", "EFECTIVO")
+
+// Pantalla principal
 @Composable
 fun TransferView(
-    accounts: List<Account>,
+    accounts:  List<Account>,
     viewModel: TransferViewModel
 ) {
-    if ( accounts.size < 2) {
+    val eligibleAccounts = accounts.filter { it.type.uppercase() in TRANSFER_TYPES }
+
+    if (eligibleAccounts.size < 2) {
         Column(
-            modifier = Modifier
+            modifier              = Modifier
                 .fillMaxSize()
                 .background(AppBg)
                 .padding(20.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            verticalArrangement   = Arrangement.Center,
+            horizontalAlignment   = Alignment.CenterHorizontally
         ) {
-
             Text(
-                text = "Necesitas al menos 2 cuentas para realizar transferencias",
+                text  = "Necesitas al menos 2 cuentas de tipo Ahorro o Efectivo para realizar transferencias",
                 color = WhiteSoft
             )
         }
         return
     }
 
-    var fromAccount by remember {
-        mutableStateOf(accounts.first())
-    }
-
-    var toAccount by remember {
-        mutableStateOf(accounts.last())
-    }
-
-    var amount by remember {
-        mutableStateOf("")
-    }
-
+    var fromAccount by remember { mutableStateOf(eligibleAccounts.first()) }
+    var toAccount   by remember { mutableStateOf(eligibleAccounts.last()) }
+    var amountRaw   by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -86,16 +87,13 @@ fun TransferView(
             .background(AppBg)
             .padding(20.dp)
     ) {
-
         Text("DESDE", color = Muted, fontSize = 13.sp)
         Spacer(modifier = Modifier.height(8.dp))
 
         AccountSelector(
-            selectedAccount = fromAccount,
-            accounts = accounts,
-            onAccountSelected = {
-                fromAccount = it
-            }
+            selectedAccount   = fromAccount,
+            accounts          = eligibleAccounts,
+            onAccountSelected = { fromAccount = it }
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -104,11 +102,9 @@ fun TransferView(
         Spacer(modifier = Modifier.height(8.dp))
 
         AccountSelector(
-            selectedAccount = toAccount,
-            accounts = accounts.filter { it != fromAccount },
-            onAccountSelected = {
-                toAccount = it
-            }
+            selectedAccount   = toAccount,
+            accounts          = eligibleAccounts.filter { it != fromAccount },
+            onAccountSelected = { toAccount = it }
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -117,38 +113,34 @@ fun TransferView(
         Spacer(modifier = Modifier.height(8.dp))
 
         AmountSection(
-            amount = amount,
-            onAmountChange = {
-                amount = it
-            }
+            amountRaw      = amountRaw,
+            onAmountChange = { amountRaw = it.filter { c -> c.isDigit() } }
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
         Button(
             onClick = {
-
                 viewModel.transfer(
                     fromAccountId = fromAccount.id,
-                    toAccountId = toAccount.id,
-                    amount = amount.toDoubleOrNull() ?: 0.0
+                    toAccountId   = toAccount.id,
+                    amount        = amountRaw.toDoubleOrNull() ?: 0.0
                 )
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-
             Text("Transferir")
         }
     }
 }
 
+// Selector de cuenta
 @Composable
 fun AccountSelector(
-    selectedAccount: Account,
-    accounts: List<Account>,
+    selectedAccount:   Account,
+    accounts:          List<Account>,
     onAccountSelected: (Account) -> Unit
 ) {
-
     var expanded by remember { mutableStateOf(false) }
 
     Box {
@@ -156,55 +148,46 @@ fun AccountSelector(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { expanded = true },
-            shape = RoundedCornerShape(16.dp),
+            shape  = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = CardBg)
         ) {
-
             Row(
-                modifier = Modifier
+                modifier              = Modifier
                     .padding(16.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
-
                 Column {
                     Text(
-                        selectedAccount.title,
-                        color = WhiteSoft,
+                        text       = selectedAccount.title,
+                        color      = WhiteSoft,
                         fontWeight = FontWeight.Bold
                     )
-
+                    // formatCOP viene de CurrencyUtils.kt
                     Text(
-                        "$${selectedAccount.balance}",
-                        color = MutedSoft,
+                        text     = formatCOP(selectedAccount.balance),
+                        color    = MutedSoft,
                         fontSize = 12.sp
                     )
                 }
-
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = Muted
-                )
+                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Muted)
             }
         }
 
         DropdownMenu(
-            expanded = expanded,
+            expanded         = expanded,
             onDismissRequest = { expanded = false }
         ) {
-
             accounts.forEach { account ->
-
                 DropdownMenuItem(
                     text = {
                         Column {
-                            Text(account.title)
+                            Text(account.title, fontWeight = FontWeight.Bold)
                             Text(
-                                "$${account.balance}",
+                                text     = formatCOP(account.balance),
                                 fontSize = 12.sp,
-                                color = Color.Gray
+                                color    = Color.Gray
                             )
                         }
                     },
@@ -218,77 +201,103 @@ fun AccountSelector(
     }
 }
 
+// Sección de monto
 @Composable
 fun AmountSection(
-    amount: String,
+    amountRaw:      String,
     onAmountChange: (String) -> Unit
 ) {
+    val quickAmounts = listOf(10_000L, 20_000L, 50_000L, 100_000L, 200_000L, 500_000L)
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape  = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg)
     ) {
-
         Column(modifier = Modifier.padding(20.dp)) {
 
+            // Vista previa formateada — formatCOP viene de CurrencyUtils.kt
+            val preview = if (amountRaw.isEmpty()) "$ 0 COP"
+            else formatCOP(amountRaw.toLongOrNull()?.toDouble() ?: 0.0)
+
             Text(
-                "$ $amount",
-                color = WhiteSoft,
-                fontSize = 28.sp,
+                text       = preview,
+                color      = if (amountRaw.isEmpty()) MutedSoft else WhiteSoft,
+                fontSize   = 28.sp,
                 fontWeight = FontWeight.Bold
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-
-                listOf("10000", "20000", "50000").forEach {
-
-                    QuickAmountButton(it) {
-                        onAmountChange(it)
+            // Presets en 2 filas de 3 — formatCOPLong viene de CurrencyUtils.kt
+            quickAmounts.chunked(3).forEach { row ->
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    row.forEach { preset ->
+                        QuickAmountButton(
+                            label    = formatCOPLong(preset),
+                            selected = amountRaw == preset.toString(),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            onAmountChange(preset.toString())
+                        }
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
+            // Campo libre — ThousandsSeparatorTransformation viene de CurrencyUtils.kt
             TextField(
-                value = amount,
-                onValueChange = onAmountChange,
-                placeholder = {
-                    Text("Ingrese monto", color = MutedSoft)
-                },
-                colors = TextFieldDefaults.colors(
+                value                = amountRaw,
+                onValueChange        = onAmountChange,
+                placeholder          = { Text("Otro monto", color = MutedSoft) },
+                keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = ThousandsSeparatorTransformation,
+                colors               = TextFieldDefaults.colors(
                     unfocusedContainerColor = CardBg,
-                    focusedContainerColor = CardBg,
+                    focusedContainerColor   = CardBg,
                     unfocusedIndicatorColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    focusedTextColor = WhiteSoft,
-                    unfocusedTextColor = WhiteSoft
-                )
+                    focusedIndicatorColor   = Accent,
+                    focusedTextColor        = WhiteSoft,
+                    unfocusedTextColor      = WhiteSoft
+                ),
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
 }
 
+// Botón de monto rápido
 @Composable
 fun QuickAmountButton(
-    value: String,
-    onClick: () -> Unit
+    label:    String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick:  () -> Unit
 ) {
+    val bg      = if (selected) Accent      else Color(0xFF1A2A47)
+    val textCol = if (selected) Color.Black else WhiteSoft
 
     Card(
-        modifier = Modifier.clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2A47))
+        modifier = modifier.clickable { onClick() },
+        shape    = RoundedCornerShape(12.dp),
+        colors   = CardDefaults.cardColors(containerColor = bg)
     ) {
-
-        Text(
-            "$$value",
-            modifier = Modifier.padding(12.dp),
-            color = WhiteSoft
-        )
+        Box(
+            modifier         = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp, horizontal = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text       = label,
+                color      = textCol,
+                fontSize   = 12.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+            )
+        }
     }
 }

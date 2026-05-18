@@ -46,7 +46,7 @@ fun  CreateAccountView(
     var number by remember { mutableStateOf("") }
 
     val accountTypes = listOf(
-        "ACTIVA",
+        "EFECTIVO",
         "AHORRO",
         "PRESTAMO"
     )

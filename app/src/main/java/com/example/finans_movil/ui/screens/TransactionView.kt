@@ -34,37 +34,27 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.finans_movil.Model.Account
 import com.example.finans_movil.Viewmodel.TransactionViewModel
+import com.example.finans_movil.ui.utilities.ThousandsSeparatorTransformation
 
-private val AppBg = Color(0xFF000000)
-private val CardBg = Color(0xFF081A3A)
-private val Accent = Color(0xFF25FF00)
-private val Muted = Color(0xFF9FAAC0)
+private val AppBg     = Color(0xFF000000)
+private val CardBg    = Color(0xFF081A3A)
+private val Accent    = Color(0xFF25FF00)
+private val Muted     = Color(0xFF9FAAC0)
 private val MutedSoft = Color(0xFF6F7A92)
 private val WhiteSoft = Color(0xFFF5F7FA)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionView(
-    type: String,
+    type:          String,
     navController: NavController,
-    viewModel: TransactionViewModel,
-    accounts: List<Account>
-    ) {
-
-    var  description by remember {
-        mutableStateOf("")
-    }
-
-    var amount by remember {
-        mutableStateOf("")
-    }
-
-    var expanded by remember {
-        mutableStateOf(false)
-    }
-
-    var selectedAccount by remember {
-        mutableStateOf<Account?>(null)
-    }
+    viewModel:     TransactionViewModel,
+    accounts:      List<Account>
+) {
+    var description     by remember { mutableStateOf("") }
+    var amountRaw       by remember { mutableStateOf("") }
+    var expanded        by remember { mutableStateOf(false) }
+    var selectedAccount by remember { mutableStateOf<Account?>(null) }
 
     Column(
         modifier = Modifier
@@ -73,99 +63,78 @@ fun TransactionView(
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
         Text(
-            text = if (type == "ingreso") "Nuevo Ingreso" else "Nuevo Egreso",
-            color = WhiteSoft,
-            fontSize = 20.sp,
+            text       = if (type == "ingreso") "Nuevo Ingreso" else "Nuevo Egreso",
+            color      = WhiteSoft,
+            fontSize   = 20.sp,
             fontWeight = FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        //Seleccionar cuenta
-
+        // Selector de cuenta
         ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = {
-                expanded = !expanded
-            }
+            expanded         = expanded,
+            onExpandedChange = { expanded = !expanded }
         ) {
-
             OutlinedTextField(
-                value = selectedAccount?.title ?: "",
+                value         = selectedAccount?.title ?: "",
                 onValueChange = {},
-                readOnly = true,
-                label = {
-                    Text("Seleccionar cuenta")
-                },
-                modifier = Modifier
+                readOnly      = true,
+                label         = { Text("Seleccionar cuenta") },
+                modifier      = Modifier
                     .menuAnchor()
                     .fillMaxWidth()
             )
 
             ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = {
-                    expanded = false
-                }
+                expanded         = expanded,
+                onDismissRequest = { expanded = false }
             ) {
-
                 accounts.forEach { account ->
-
                     DropdownMenuItem(
-                        text = {
-                            Text(account.title)
-                        },
+                        text    = { Text(account.title) },
                         onClick = {
-
                             selectedAccount = account
-                            expanded = false
+                            expanded        = false
                         }
                     )
                 }
             }
         }
 
-        // Cuenta
+        // Descripción
         OutlinedTextField(
-            value = description,
-            onValueChange = {
-                description = it
-            },
-            label = {
-                Text("Descripción")
-            },
-            modifier = Modifier.fillMaxWidth()
+            value         = description,
+            onValueChange = { description = it },
+            label         = { Text("Descripción") },
+            modifier      = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Monto con formato en tiempo real
         OutlinedTextField(
-            value = amount,
-            onValueChange = {
-                amount = it
-            },
-            label = {
-                Text("Monto")
-            },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
+            value                = amountRaw,
+            onValueChange        = { amountRaw = it.filter { c -> c.isDigit() } },
+            label                = { Text("Monto") },
+            placeholder          = { Text("0", color = MutedSoft) },
+            keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Number),
+            visualTransformation = ThousandsSeparatorTransformation,
+            modifier             = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Guardar
         Button(
             onClick = {
-
                 viewModel.saveTransaction(
-                    accountId = selectedAccount!!.id,
+                    accountId   = selectedAccount!!.id,
                     description = description,
-                    amount = amount.toDoubleOrNull() ?: 0.0,
-                    type = type
+                    amount      = amountRaw.toDoubleOrNull() ?: 0.0,
+                    type        = type
                 )
-
                 navController.popBackStack()
             },
             modifier = Modifier.fillMaxWidth()
@@ -177,25 +146,23 @@ fun TransactionView(
 
 @Composable
 fun InputField(
-    value: String,
+    value:         String,
     onValueChange: (String) -> Unit,
-    placeholder: String
+    placeholder:   String
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape  = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg)
     ) {
         TextField(
-            value = value,
+            value         = value,
             onValueChange = onValueChange,
-            placeholder = {
-                Text(placeholder, color = MutedSoft)
-            },
-            colors = TextFieldDefaults.colors(
+            placeholder   = { Text(placeholder, color = MutedSoft) },
+            colors        = TextFieldDefaults.colors(
                 unfocusedContainerColor = CardBg,
-                focusedContainerColor = CardBg,
+                focusedContainerColor   = CardBg,
                 unfocusedIndicatorColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent
+                focusedIndicatorColor   = Color.Transparent
             )
         )
     }
