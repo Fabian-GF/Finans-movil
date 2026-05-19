@@ -19,6 +19,22 @@ Todos los cambios representativos del proyecto serán documentados en este archi
 ### Eliminado
 
 - ... -->
+## [1.0.0] - 2026-05-18
+
+### Agregado
+
+- Formato de números en ingreso y visualización de balances
+
+### Corregido
+
+- Formato de la moneda
+- Balance total no incluye toda la cuentas
+- Movimientos negativos, ya no se permiten valores negativos
+
+## Cambiado
+
+- Se realiza cambio en los mockups por ajustes de funcionalidad
+- Se realiza cambios en el tipo de cuenta "cuenta activa" pasa a ser "Efectivo"
 
 ## [0.2.0] - 2026-05-04
 

@@ -78,7 +78,7 @@ import com.example.finans_movil.Viewmodel.TransactionViewModel
 import com.example.finans_movil.Viewmodel.TransferViewModel
 import com.example.finans_movil.ui.utilities.formatCOP
 
-// ── Colores ──────────────────────────────────────────────────────────────────
+// Colores
 private val AppBg      = Color(0xFF000000)
 private val CardBg     = Color(0xFF081A3A)
 private val CardBorder = Color(0xFF172A4D)

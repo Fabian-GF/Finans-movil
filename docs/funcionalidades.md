@@ -11,4 +11,3 @@ La siguientes es una lista de las funcionalidades disponibles para el usuario de
     - Registrar ingresos (dinero que entra)
     - Registrar egresos (dinero que sale)
     - Visualizar el historial de movimientos
-    - Filtros en el historial

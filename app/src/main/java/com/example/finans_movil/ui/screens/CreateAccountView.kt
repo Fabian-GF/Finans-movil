@@ -32,7 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.finans_movil.Model.Account
 import com.example.finans_movil.Viewmodel.AccountsViewModel
+import com.example.finans_movil.ui.utilities.ThousandsSeparatorTransformation
 import kotlinx.coroutines.launch
+
+private val MutedSoft = Color(0xFF6F7A92)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,10 +135,12 @@ fun  CreateAccountView(
                 value = balance,
                 onValueChange = { balance = it },
                 label = { Text("Saldo inicial") },
-                modifier = Modifier.fillMaxWidth(),
+                placeholder = {Text("0", color = MutedSoft)},
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number
-                )
+                ),
+                visualTransformation = ThousandsSeparatorTransformation,
+                modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
