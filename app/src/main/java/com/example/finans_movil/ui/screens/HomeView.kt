@@ -25,8 +25,13 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -36,6 +41,8 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -55,9 +62,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -66,17 +75,22 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.finans_movil.Data.Local.AppDatabase
 import com.example.finans_movil.Data.Repository.BankRepository
+import com.example.finans_movil.Data.Repository.MonthlyBillRepository
 import com.example.finans_movil.Data.Repository.TransactionRepository
 import com.example.finans_movil.Data.Repository.TransferRepository
 import com.example.finans_movil.Model.Account
+import com.example.finans_movil.Model.MonthlyBill
 import com.example.finans_movil.Model.Transaction
 import com.example.finans_movil.Viewmodel.AccountsViewModel
 import com.example.finans_movil.Viewmodel.Factory.AccountViewModelFactory
+import com.example.finans_movil.Viewmodel.Factory.MonthlyBillViewModelFactory
 import com.example.finans_movil.Viewmodel.Factory.TransactionViewModelFactory
 import com.example.finans_movil.Viewmodel.Factory.TransferViewModelFactory
+import com.example.finans_movil.Viewmodel.MonthlyBillViewModel
 import com.example.finans_movil.Viewmodel.TransactionViewModel
 import com.example.finans_movil.Viewmodel.TransferViewModel
 import com.example.finans_movil.ui.utilities.formatCOP
+import kotlin.collections.take
 
 // Colores
 private val AppBg      = Color(0xFF000000)
@@ -102,6 +116,8 @@ sealed class Screen(val route: String) {
         fun createRoute(type: String) = "transaction/$type"
     }
     object CreateAccount : Screen("createAccount")
+
+    object Reports : Screen("reports")
 }
 
 // Punto de entrada principal
@@ -130,6 +146,19 @@ fun MainView(
         )
     )
 
+    val monthlyBillViewModel: MonthlyBillViewModel = viewModel(
+        factory = MonthlyBillViewModelFactory(
+            MonthlyBillRepository(
+                database       = database,              // ← nuevo parámetro
+                monthlyBillDao = database.monthlyBillDao(),
+                transactionDao = database.transactionDao(),
+                accountDao     = database.accountDao()
+            )
+        )
+    )
+
+    val bills by monthlyBillViewModel.bills.collectAsState()
+
     val accounts     by viewModel.accounts.collectAsState()
     val transactions by transactionViewModel.transactions.collectAsState()
     val totalAhorros = accounts.filter { it.type == "AHORRO" || it.type == "EFECTIVO"}.sumOf { it.balance }
@@ -149,7 +178,9 @@ fun MainView(
                     navController = navController,
                     accounts      = accounts,
                     transactions  = transactions,
-                    totalAhorros  = totalAhorros
+                    totalAhorros = totalAhorros,
+                    bills = bills,
+                    monthlyBillViewModel = monthlyBillViewModel,
                 )
             }
             composable(Screen.Accounts.route) {
@@ -187,6 +218,9 @@ fun MainView(
                     viewModel     = viewModel
                 )
             }
+            composable(Screen.Reports.route) {
+                ReportsView()
+            }
         }
     }
 }
@@ -198,7 +232,9 @@ fun HomeContent(
     navController: NavHostController,
     accounts:      List<Account>,
     transactions:  List<Transaction>,
-    totalAhorros:  Double
+    totalAhorros:         Double,
+    bills:                List<MonthlyBill>,
+    monthlyBillViewModel: MonthlyBillViewModel
 ) {
     val listState = rememberLazyListState()
 
@@ -216,6 +252,7 @@ fun HomeContent(
         ) {
             item { Spacer(modifier = Modifier.height(36.dp)) }
 
+            // 0. Hero balance
             item {
                 HeroBalanceCard(
                     navController = navController,
@@ -223,26 +260,37 @@ fun HomeContent(
                 )
             }
 
-            item { Spacer(modifier = Modifier.height(10.dp)) }
+            // 1. Gastos del mes
+            item {
+                MonthlyExpensesCard(
+                    bills     = bills,
+                    accounts  = accounts,
+                    viewModel = monthlyBillViewModel
+                )
+            }
 
+            // 2. Movimientos recientes
+            item {
+                MovementsSection(transactions = transactions)
+            }
+
+            // 3. Solo 2 cuentas + botón "Ver más"
             item {
                 SectionHeader(
                     title      = "Mis Cuentas",
-                    actionText = "Ver todos"
+                    actionText = "Ver todos",
+                    onAction   = { navController.navigate(Screen.Accounts.route) }
                 )
             }
 
-            items(accounts) { account ->
-                InfoAccountCard(
-                    account       = account,
-                    navController = navController
-                )
+            items(accounts.take(2)) { account ->
+                InfoAccountCard(account = account, navController = navController)
             }
 
-            item { Spacer(modifier = Modifier.height(8.dp)) }
-
-            item {
-                MovementsSection(transactions = transactions)
+            if (accounts.size > 2) {
+                item {
+                    VerMasButton { navController.navigate(Screen.Accounts.route) }
+                }
             }
 
             item { Spacer(modifier = Modifier.height(12.dp)) }
@@ -281,7 +329,7 @@ private fun HeroBalanceCard(
             ) {
                 Column {
                     Text(
-                        text       = "Balance Total",
+                        text       = "Saldo Total",
                         color      = Muted,
                         fontSize   = 20.sp,
                         fontWeight = FontWeight.Medium
@@ -340,6 +388,102 @@ private fun HeroBalanceCard(
     }
 }
 
+@Composable
+fun MonthlyExpensesCard(
+    bills:     List<MonthlyBill>,
+    accounts:  List<Account>,
+    viewModel: MonthlyBillViewModel
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(22.dp),
+        colors   = CardDefaults.cardColors(containerColor = CardBg),
+        border   = BorderStroke(1.dp, CardBorder)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+
+            // Cabecera
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                Text(
+                    text       = "Gastos del mes",
+                    color      = WhiteSoft,
+                    fontSize   = 19.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(Color(0xFF1A2F1A), RoundedCornerShape(999.dp))
+                        .clickable { showDialog = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.Add,
+                        contentDescription = "Agregar gasto fijo",
+                        tint               = Accent,
+                        modifier           = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Lista de bills (máximo 3 en preview)
+            if (bills.isEmpty()) {
+                Text(
+                    text     = "Sin gastos fijos este mes",
+                    color    = MutedSoft,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                bills.take(3).forEach { bill ->
+                    ExpenseItem(
+                        bill      = bill,
+                        onPay     = { viewModel.payBill(bill) }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+            }
+
+            // Ver más
+            if (bills.size > 3) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier         = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Text(
+                        text       = "ver más",
+                        color      = Accent,
+                        fontSize   = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier   = Modifier.clickable { /* TODO: navegar a lista completa */ }
+                    )
+                }
+            }
+        }
+    }
+
+    // Diálogo de creación
+    if (showDialog) {
+        CreateMonthlyBillDialog(
+            accounts  = accounts,
+            onDismiss = { showDialog = false },
+            onCreate  = { bill ->
+                viewModel.addBill(bill)
+                showDialog = false
+            }
+        )
+    }
+}
+
 // Botón de acción rápida (ingreso / egreso)
 private enum class TransactionType { Income, Expense }
 
@@ -387,24 +531,22 @@ private fun TransactionButton(
 
 // Cabecera de seccion
 @Composable
-private fun SectionHeader(title: String, actionText: String) {
+private fun SectionHeader(
+    title: String,
+    actionText: String,
+    onAction: () -> Unit = {}) {
     Row(
         modifier              = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment     = Alignment.CenterVertically
     ) {
+        Text(text = title,      color = WhiteSoft, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Text(
-            text       = title,
-            color      = WhiteSoft,
-            fontSize   = 25.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text       = actionText,
-            color      = Accent,
-            fontSize   = 20.sp,
+            text     = actionText,
+            color    = Accent,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            modifier   = Modifier.clickable { }
+            modifier = Modifier.clickable { onAction() }   // ← antes era vacío
         )
     }
 }
@@ -542,13 +684,39 @@ private fun ScrollBarIndicator(
     }
 }
 
+@Composable
+private fun VerMasButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier.clickable { onClick() },
+            shape    = RoundedCornerShape(999.dp),
+            color    = ButtonIdle,
+            border   = BorderStroke(1.dp, CardBorder)
+        ) {
+            Text(
+                text       = "Ver más",
+                color      = Accent,
+                fontSize   = 14.sp,
+                fontWeight = FontWeight.Bold,
+                modifier   = Modifier.padding(horizontal = 28.dp, vertical = 10.dp)
+            )
+        }
+    }
+}
+
 // Bottom Navigation Bar
 @Composable
 private fun DemoBottomBar(navController: NavHostController) {
     val items = listOf(
         Triple("Inicio",     Icons.Default.Home,                  Screen.Home.route),
         Triple("Cuentas",    Icons.Default.AccountBalanceWallet,  Screen.Accounts.route),
-        Triple("Transferir", Icons.Default.SwapHoriz,             Screen.Transfer.route)
+        Triple("Transferir", Icons.Default.SwapHoriz,             Screen.Transfer.route),
+        Triple("Reportes",   Icons.Default.BarChart,             Screen.Reports.route)
     )
 
     NavigationBar(
@@ -596,30 +764,273 @@ private fun DemoBottomBar(navController: NavHostController) {
     }
 }
 
-// Preview
-@Preview(showBackground = true)
 @Composable
-fun HomeViewPreview() {
-    val navController   = rememberNavController()
-    val fakeAccounts    = listOf(
-        Account(
-            id      = 1,
-            type    = "AHORRO",
-            badge   = "AHORRO",
-            title   = "Cuenta Principal",
-            balance = 12_000.0,
-            number  = "1241"
-        )
-    )
-    val fakeTransactions = listOf(
-        Transaction(id = 1, accountId = 1, description = "Compra Supermercado", amount = 50.5,    type = "EGRESO"),
-        Transaction(id = 2, accountId = 1, description = "Pago Nómina",         amount = 1_500.0, type = "INGRESO")
-    )
+private fun ExpenseItem(
+    bill:  MonthlyBill,
+    onPay: () -> Unit
+) {
+    val isPaid       = bill.status
+    val badgeBg      = if (isPaid) Color(0xFF1A2F1A) else Color(0xFF2F1A1A)
+    val badgeColor   = if (isPaid) Accent             else Danger
 
-    HomeContent(
-        navController = navController,
-        accounts      = fakeAccounts,
-        transactions  = fakeTransactions,
-        totalAhorros  = 12_000.0
+    Row(
+        modifier          = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Dot indicador
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(badgeColor, RoundedCornerShape(999.dp))
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Nombre del gasto
+        Text(
+            text     = bill.name,
+            color    = WhiteSoft,
+            fontSize = 14.sp,
+            modifier = Modifier.weight(1f)
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Badge clickeable (rojo = pendiente, verde = pagado)
+        Surface(
+            modifier = Modifier.clickable(enabled = !isPaid) { onPay() },
+            shape    = RoundedCornerShape(12.dp),
+            color    = badgeBg
+        ) {
+            Row(
+                modifier          = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isPaid) {
+                    Icon(
+                        imageVector        = Icons.Default.Check,
+                        contentDescription = null,
+                        tint               = Accent,
+                        modifier           = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                Text(
+                    text       = formatCOP(bill.amount),
+                    color      = badgeColor,
+                    fontSize   = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateMonthlyBillDialog(
+    accounts:  List<Account>,
+    onDismiss: () -> Unit,
+    onCreate:  (MonthlyBill) -> Unit
+) {
+    var name            by remember { mutableStateOf("") }
+    var amount          by remember { mutableStateOf("") }
+    var dueDay          by remember { mutableStateOf("") }
+    var selectedAccount by remember { mutableStateOf<Account?>(accounts.firstOrNull()) }
+    var expanded        by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape  = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBg),
+            border = BorderStroke(1.dp, CardBorder)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+
+                // Título
+                Text(
+                    text       = "Nuevo gasto fijo",
+                    color      = WhiteSoft,
+                    fontSize   = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Nombre
+                DialogTextField(
+                    value       = name,
+                    onValueChange = { name = it },
+                    placeholder = "Nombre  (ej: Arriendo)"
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Monto
+                DialogTextField(
+                    value         = amount,
+                    onValueChange = { amount = it },
+                    placeholder   = "Monto",
+                    keyboardType  = KeyboardType.Number
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Día de vencimiento
+                DialogTextField(
+                    value         = dueDay,
+                    onValueChange = { dueDay = it },
+                    placeholder   = "Día de vencimiento  (1 - 31)",
+                    keyboardType  = KeyboardType.Number
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Dropdown de cuenta
+                Box {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { expanded = true },
+                        shape  = RoundedCornerShape(14.dp),
+                        color  = ButtonIdle,
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Row(
+                            modifier              = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment     = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text  = selectedAccount?.title ?: "Selecciona una cuenta",
+                                color = if (selectedAccount != null) WhiteSoft else MutedSoft,
+                                fontSize = 14.sp
+                            )
+                            Icon(
+                                imageVector        = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint               = MutedSoft,
+                                modifier           = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    DropdownMenu(
+                        expanded         = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier         = Modifier.background(CardBg)
+                    ) {
+                        accounts.forEach { account ->
+                            DropdownMenuItem(
+                                text    = {
+                                    Column {
+                                        Text(account.title, color = WhiteSoft, fontSize = 14.sp)
+                                        Text(formatCOP(account.balance), color = MutedSoft, fontSize = 12.sp)
+                                    }
+                                },
+                                onClick = {
+                                    selectedAccount = account
+                                    expanded        = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Botones
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Cancelar
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onDismiss() },
+                        shape  = RoundedCornerShape(14.dp),
+                        color  = ButtonIdle,
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Text(
+                            text       = "Cancelar",
+                            color      = MutedSoft,
+                            fontSize   = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier   = Modifier
+                                .padding(vertical = 14.dp)
+                                .fillMaxWidth(),
+                            textAlign  = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+
+                    // Guardar
+                    val isValid = name.isNotBlank()
+                            && amount.toDoubleOrNull() != null
+                            && dueDay.isNotBlank()
+                            && selectedAccount != null
+
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(enabled = isValid) {
+                                onCreate(
+                                    MonthlyBill(
+                                        name      = name.trim(),
+                                        amount    = amount.toDouble(),
+                                        accountId = selectedAccount!!.id,
+                                        dueDay    = dueDay.trim(),
+                                        status    = false
+                                    )
+                                )
+                            },
+                        shape  = RoundedCornerShape(14.dp),
+                        color  = if (isValid) Accent else ButtonIdle,
+                        border = if (isValid) null else BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Text(
+                            text       = "Guardar",
+                            color      = if (isValid) Color.Black else MutedSoft,
+                            fontSize   = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier   = Modifier
+                                .padding(vertical = 14.dp)
+                                .fillMaxWidth(),
+                            textAlign  = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DialogTextField(
+    value:         String,
+    onValueChange: (String) -> Unit,
+    placeholder:   String,
+    keyboardType: KeyboardType = KeyboardType.Text
+) {
+    BasicTextField(
+        value         = value,
+        onValueChange = onValueChange,
+        singleLine    = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        textStyle     = androidx.compose.ui.text.TextStyle(
+            color    = WhiteSoft,
+            fontSize = 14.sp
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ButtonIdle, RoundedCornerShape(14.dp))
+            .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        decorationBox = { inner ->
+            if (value.isEmpty()) {
+                Text(text = placeholder, color = MutedSoft, fontSize = 14.sp)
+            }
+            inner()
+        }
     )
 }

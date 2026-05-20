@@ -29,5 +29,5 @@ interface AccountDao {
     )
 
     @Query("SELECT * FROM accounts WHERE id = :accountId LIMIT 1")
-    suspend fun getAccountById(accountId: Int): AccountEntity
+    suspend fun getAccountById(accountId: Int): AccountEntity?
 }

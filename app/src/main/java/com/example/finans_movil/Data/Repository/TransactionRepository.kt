@@ -8,46 +8,30 @@ import com.example.finans_movil.Model.Transaction
 
 class TransactionRepository(
     private val transactionDao: TransactionDao,
-    private val accountDao: AccountDao
+    private val accountDao:     AccountDao
 ) {
     suspend fun insertTransaction(transaction: Transaction) {
 
-        // Obtener cuenta
-        val account = accountDao.getAccountById(
-            transaction.accountId
-        )
+        val account = accountDao.getAccountById(transaction.accountId)
+            ?: throw Exception("Cuenta no encontrada")
 
-        // Calcular nuevo saldo
         val newBalance = when (transaction.type) {
-
-            "ingreso" -> {
-                account.balance + transaction.amount
-            }
-
-            "egreso" -> {
-
+            "ingreso" -> account.balance + transaction.amount
+            "egreso"  -> {
                 if (transaction.amount > account.balance) {
                     throw Exception("Fondos insuficientes")
                 }
-
                 account.balance - transaction.amount
             }
-
-            else -> {
-                account.balance
-            }
+            else -> account.balance
         }
 
-        // Actualizar saldo
         accountDao.updateBalance(
-            accountId = transaction.accountId,
+            accountId  = transaction.accountId,
             newBalance = newBalance
         )
 
-        // Guardar transacción SOLO UNA VEZ
-        transactionDao.insertTransaction(
-            transaction.toEntity()
-        )
+        transactionDao.insertTransaction(transaction.toEntity())
     }
 
     suspend fun getTransactions(accountId: Int): List<Transaction> {
