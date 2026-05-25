@@ -4,6 +4,9 @@ import com.example.finans_movil.Data.Local.Dao.AccountDao
 import com.example.finans_movil.Data.Local.Dao.TransactionDao
 import com.example.finans_movil.Data.Mapper.toEntity
 import com.example.finans_movil.Model.Transaction
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class TransferRepository(
     private val accountDao:     AccountDao,
@@ -20,6 +23,8 @@ class TransferRepository(
         val toAccount = accountDao.getAccountById(toAccountId)
             ?: throw Exception("Cuenta destino no encontrada")
 
+        val transactionDate= SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
         if (amount > fromAccount.balance) {
             throw Exception("Fondos insuficientes")
         }
@@ -32,7 +37,8 @@ class TransferRepository(
                 accountId   = fromAccountId,
                 description = "Transferencia a ${toAccount.title}",
                 amount      = amount,
-                type        = "egreso"
+                type        = "egreso",
+                date        = transactionDate
             ).toEntity()
         )
 
@@ -41,7 +47,8 @@ class TransferRepository(
                 accountId   = toAccountId,
                 description = "Transferencia recibida de ${fromAccount.title}",
                 amount      = amount,
-                type        = "ingreso"
+                type        = "ingreso",
+                date        = transactionDate
             ).toEntity()
         )
     }

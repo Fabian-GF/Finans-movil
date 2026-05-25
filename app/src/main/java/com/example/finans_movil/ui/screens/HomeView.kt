@@ -79,6 +79,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.finans_movil.Data.Local.AppDatabase
 import com.example.finans_movil.Data.Repository.BankRepository
 import com.example.finans_movil.Data.Repository.MonthlyBillRepository
+import com.example.finans_movil.Data.Repository.ReportsRepository
 import com.example.finans_movil.Data.Repository.TransactionRepository
 import com.example.finans_movil.Data.Repository.TransferRepository
 import com.example.finans_movil.Model.Account
@@ -87,9 +88,11 @@ import com.example.finans_movil.Model.Transaction
 import com.example.finans_movil.Viewmodel.AccountsViewModel
 import com.example.finans_movil.Viewmodel.Factory.AccountViewModelFactory
 import com.example.finans_movil.Viewmodel.Factory.MonthlyBillViewModelFactory
+import com.example.finans_movil.Viewmodel.Factory.ReportsViewModelFactory
 import com.example.finans_movil.Viewmodel.Factory.TransactionViewModelFactory
 import com.example.finans_movil.Viewmodel.Factory.TransferViewModelFactory
 import com.example.finans_movil.Viewmodel.MonthlyBillViewModel
+import com.example.finans_movil.Viewmodel.ReportsViewModel
 import com.example.finans_movil.Viewmodel.TransactionViewModel
 import com.example.finans_movil.Viewmodel.TransferViewModel
 import com.example.finans_movil.ui.utilities.formatCOP
@@ -169,6 +172,12 @@ fun MainView(
         )
     )
 
+    val reportsViewModel: ReportsViewModel = viewModel(
+        factory = ReportsViewModelFactory(
+            ReportsRepository(database.transactionDao())
+        )
+    )
+
     val bills by monthlyBillViewModel.bills.collectAsState()
 
     val accounts     by viewModel.accounts.collectAsState()
@@ -240,7 +249,7 @@ fun MainView(
                 )
             }
             composable(Screen.Reports.route) {
-                ReportsView()
+                ReportsView(viewModel = reportsViewModel)
             }
 
             composable(Screen.MonthlyBill.route) {

@@ -9,7 +9,8 @@ fun TransactionEntity.toModel(): Transaction {
         accountId = accountId,
         description = description,
         amount = amount,
-        type = type
+        type = type,
+        date = date
     )
 }
 
@@ -19,6 +20,7 @@ fun Transaction.toEntity(): TransactionEntity {
         accountId = accountId,
         description = description,
         amount = amount,
-        type = type
+        type = type,
+        date = date
     )
 }

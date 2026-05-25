@@ -15,7 +15,7 @@ import com.example.finans_movil.Data.Local.Entities.TransactionEntity
         TransactionEntity::class,
         MonthlyBillEntity::class
     ],
-    version = 5
+    version = 6
 )
 abstract class AppDatabase : RoomDatabase() {
 

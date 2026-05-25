@@ -33,8 +33,9 @@ class AccountsViewModel(
     // Se llama cada vez que cambia la lista de cuentas
     fun loadLastTransactions(accountIds: List<Int>) {
         viewModelScope.launch {
-            val map = accountIds.associateWith { id ->
-                transactionRepository.getLastTransaction(accountId = id)
+            val map = mutableMapOf<Int, Transaction?>()   // ← tipo explícito
+            accountIds.forEach { id ->
+                map[id] = transactionRepository.getLastTransaction(id)
             }
             _lastTransactions.value = map
         }

@@ -8,9 +8,9 @@ data class TransactionEntity(
 
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-
     val accountId: Int,
     val description: String,
     val amount: Double,
-    val type: String
+    val type: String,
+    val date: String = ""
 )

@@ -54,7 +54,7 @@ class MonthlyBillRepository(
                     accountId   = bill.accountId,
                     description = bill.name,
                     amount      = bill.amount,
-                    type        = "EGRESO"
+                    type        = "egreso"
                 )
             )
 
@@ -62,6 +62,18 @@ class MonthlyBillRepository(
                 bill.toEntity().copy(
                     status   = true,
                     paidDate = today
+                )
+            )
+
+            val transactionDate= SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+            transactionDao.insertTransaction(
+                TransactionEntity(
+                    accountId   = bill.accountId,
+                    description = bill.name,
+                    amount      = bill.amount,
+                    type        = "egreso",
+                    date        = transactionDate
                 )
             )
         }

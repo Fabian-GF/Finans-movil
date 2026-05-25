@@ -5,13 +5,15 @@ import com.example.finans_movil.Data.Local.Dao.TransactionDao
 import com.example.finans_movil.Data.Mapper.toEntity
 import com.example.finans_movil.Data.Mapper.toModel
 import com.example.finans_movil.Model.Transaction
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class TransactionRepository(
     private val transactionDao: TransactionDao,
     private val accountDao:     AccountDao
 ) {
     suspend fun insertTransaction(transaction: Transaction) {
-
         val account = accountDao.getAccountById(transaction.accountId)
             ?: throw Exception("Cuenta no encontrada")
 
@@ -31,7 +33,11 @@ class TransactionRepository(
             newBalance = newBalance
         )
 
-        transactionDao.insertTransaction(transaction.toEntity())
+        val transactionDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+        transactionDao.insertTransaction(
+            transaction.toEntity().copy(date = transactionDate)
+        )
     }
 
     suspend fun getTransactions(accountId: Int): List<Transaction> {
