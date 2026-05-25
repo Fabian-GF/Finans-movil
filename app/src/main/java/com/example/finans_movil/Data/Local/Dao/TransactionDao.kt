@@ -14,4 +14,7 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE accountId = :accountId ORDER BY id DESC")
     suspend fun getTransactionByAccount(accountId: Int): List<TransactionEntity>
+
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId ORDER BY id DESC LIMIT 1")
+    suspend fun getLastTransactionByAccount(accountId: Int): TransactionEntity?
 }

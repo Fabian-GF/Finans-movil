@@ -1,6 +1,8 @@
 package com.example.finans_movil.ui.screens
 
 import android.annotation.SuppressLint
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -51,6 +53,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -118,16 +121,25 @@ sealed class Screen(val route: String) {
     object CreateAccount : Screen("createAccount")
 
     object Reports : Screen("reports")
+
+    object MonthlyBill   : Screen("monthlyBills")
 }
 
 // Punto de entrada principal
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainView(
     repository: BankRepository,
     database: AppDatabase
 ) {
     val viewModel: AccountsViewModel = viewModel(
-        factory = AccountViewModelFactory(repository)
+        factory = AccountViewModelFactory(
+            repository = repository,
+            transactionRepository = TransactionRepository(
+                transactionDao = database.transactionDao(),
+                accountDao = database.accountDao()
+            )
+        )
     )
     val transactionViewModel: TransactionViewModel = viewModel(
         factory = TransactionViewModelFactory(
@@ -163,7 +175,11 @@ fun MainView(
     val transactions by transactionViewModel.transactions.collectAsState()
     val totalAhorros = accounts.filter { it.type == "AHORRO" || it.type == "EFECTIVO"}.sumOf { it.balance }
     val navController = rememberNavController()
+    val lastTransaction by viewModel.lastTransactions.collectAsState()
 
+    LaunchedEffect(accounts) {
+        viewModel.loadLastTransactions(accounts.map { it.id })
+    }
     Scaffold(
         containerColor = AppBg,
         bottomBar = { DemoBottomBar(navController) }
@@ -184,8 +200,13 @@ fun MainView(
                 )
             }
             composable(Screen.Accounts.route) {
-                AccountsView(navController, viewModel)
+                AccountsView(
+                    navController    = navController,
+                    viewModel        = viewModel,
+                    lastTransactions = lastTransaction
+                )
             }
+
             composable(Screen.Transfer.route) {
                 TransferView(
                     accounts  = accounts,
@@ -221,11 +242,21 @@ fun MainView(
             composable(Screen.Reports.route) {
                 ReportsView()
             }
+
+            composable(Screen.MonthlyBill.route) {
+                MonthlyBillsView(
+                    bills = bills,
+                    accounts = accounts,
+                    viewModel = monthlyBillViewModel,
+                    navController = navController
+                )
+            }
         }
     }
 }
 
 // Pantalla Home
+@RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("SuspiciousIndentation")
 @Composable
 fun HomeContent(
@@ -237,6 +268,7 @@ fun HomeContent(
     monthlyBillViewModel: MonthlyBillViewModel
 ) {
     val listState = rememberLazyListState()
+    val errorMessage by monthlyBillViewModel.errorMessage.collectAsState()
 
     Box(
         modifier = Modifier
@@ -265,7 +297,8 @@ fun HomeContent(
                 MonthlyExpensesCard(
                     bills     = bills,
                     accounts  = accounts,
-                    viewModel = monthlyBillViewModel
+                    viewModel = monthlyBillViewModel,
+                    navController = navController
                 )
             }
 
@@ -388,11 +421,13 @@ private fun HeroBalanceCard(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MonthlyExpensesCard(
-    bills:     List<MonthlyBill>,
-    accounts:  List<Account>,
-    viewModel: MonthlyBillViewModel
+    bills:         List<MonthlyBill>,
+    accounts:      List<Account>,
+    viewModel:     MonthlyBillViewModel,
+    navController: NavHostController
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
@@ -404,7 +439,6 @@ fun MonthlyExpensesCard(
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
 
-            // Cabecera
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -434,7 +468,6 @@ fun MonthlyExpensesCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Lista de bills (máximo 3 en preview)
             if (bills.isEmpty()) {
                 Text(
                     text     = "Sin gastos fijos este mes",
@@ -445,14 +478,13 @@ fun MonthlyExpensesCard(
             } else {
                 bills.take(3).forEach { bill ->
                     ExpenseItem(
-                        bill      = bill,
-                        onPay     = { viewModel.payBill(bill) }
+                        bill  = bill,
+                        onPay = { viewModel.payBill(bill) }
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                 }
             }
 
-            // Ver más
             if (bills.size > 3) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
@@ -464,14 +496,15 @@ fun MonthlyExpensesCard(
                         color      = Accent,
                         fontSize   = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier   = Modifier.clickable { /* TODO: navegar a lista completa */ }
+                        modifier   = Modifier.clickable {
+                            navController.navigate(Screen.MonthlyBill.route)
+                        }
                     )
                 }
             }
         }
     }
 
-    // Diálogo de creación
     if (showDialog) {
         CreateMonthlyBillDialog(
             accounts  = accounts,
@@ -1033,4 +1066,184 @@ private fun DialogTextField(
             inner()
         }
     )
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun MonthlyBillsView(
+    bills:         List<MonthlyBill>,
+    accounts:      List<Account>,
+    viewModel:     MonthlyBillViewModel,
+    navController: NavHostController
+) {
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    var showDialog by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppBg)
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item { Spacer(modifier = Modifier.height(24.dp)) }
+
+            item {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text       = "Gastos del mes",
+                        color      = WhiteSoft,
+                        fontSize   = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(Color(0xFF1A2F1A), RoundedCornerShape(999.dp))
+                            .clickable { showDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector        = Icons.Default.Add,
+                            contentDescription = "Agregar",
+                            tint               = Accent,
+                            modifier           = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+
+            // Resumen pagado / pendiente
+            item {
+                val pagados   = bills.count { it.status }
+                val pendientes = bills.count { !it.status }
+                val totalPagado   = bills.filter { it.status }.sumOf { it.amount }
+                val totalPendiente = bills.filter { !it.status }.sumOf { it.amount }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(18.dp),
+                    colors   = CardDefaults.cardColors(containerColor = CardBg),
+                    border   = BorderStroke(1.dp, CardBorder)
+                ) {
+                    Row(
+                        modifier              = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(text = "$pagados pagados", color = Accent,    fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(text = formatCOP(totalPagado),   color = Accent,    fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(CardBorder))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(text = "$pendientes pendientes", color = Danger, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(text = formatCOP(totalPendiente), color = Danger, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            if (bills.isEmpty()) {
+                item {
+                    Text(
+                        text     = "Sin gastos fijos este mes",
+                        color    = MutedSoft,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                }
+            } else {
+                items(bills) { bill ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(16.dp),
+                        colors   = CardDefaults.cardColors(containerColor = CardBg),
+                        border   = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            ExpenseItem(
+                                bill  = bill,
+                                onPay = { viewModel.payBill(bill) }
+                            )
+                            // Muestra fecha de pago si ya está pagada
+                            if (bill.status && bill.paidDate != null) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text     = "Pagado el ${bill.paidDate}",
+                                    color    = MutedSoft,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            // Muestra día de vencimiento si está pendiente
+                            if (!bill.status) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text     = "Vence el día ${bill.dueDay}",
+                                    color    = MutedSoft,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+        }
+
+        // Toast de error — fondos insuficientes
+        errorMessage?.let { msg ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 24.dp)
+            ) {
+                Surface(
+                    shape  = RoundedCornerShape(999.dp),
+                    color  = Color(0xFF2F1A1A),
+                    border = BorderStroke(1.dp, Danger)
+                ) {
+                    Row(
+                        modifier          = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector        = Icons.Default.Check,
+                            contentDescription = null,
+                            tint               = Danger,
+                            modifier           = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = msg, color = Danger, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            // Auto-dismiss después de 3 segundos
+            LaunchedEffect(msg) {
+                kotlinx.coroutines.delay(3_000)
+                viewModel.clearError()
+            }
+        }
+    }
+
+    if (showDialog) {
+        CreateMonthlyBillDialog(
+            accounts  = accounts,
+            onDismiss = { showDialog = false },
+            onCreate  = { bill ->
+                viewModel.addBill(bill)
+                showDialog = false
+            }
+        )
+    }
 }

@@ -39,4 +39,10 @@ class TransactionRepository(
             .getTransactionByAccount(accountId)
             .map { it.toModel() }
     }
+
+    suspend fun getLastTransaction(accountId: Int): Transaction? {
+        return transactionDao
+            .getLastTransactionByAccount(accountId)
+            ?.toModel()
+    }
 }

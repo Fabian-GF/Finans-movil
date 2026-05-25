@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.finans_movil.Data.Repository.MonthlyBillRepository
 import com.example.finans_movil.Model.MonthlyBill
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -13,8 +14,12 @@ import kotlinx.coroutines.launch
 import kotlin.collections.emptyList
 
 class MonthlyBillViewModel(
-    private val repository: MonthlyBillRepository
+    private val repository: MonthlyBillRepository,
 ) : ViewModel() {
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage
+
 
     val bills: StateFlow<List<MonthlyBill>> = repository.bills
         .stateIn(
@@ -39,8 +44,12 @@ class MonthlyBillViewModel(
             try {
                 repository.payBill(bill)
             } catch (e: Exception) {
-                e.printStackTrace() // por ahora logea, luego puedes mostrar un mensaje
+                _errorMessage.value = e.message
             }
         }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 }

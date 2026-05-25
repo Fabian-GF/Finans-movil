@@ -35,17 +35,19 @@ class MonthlyBillRepository(
 
     suspend fun payBill(bill: MonthlyBill) {
         database.withTransaction {
-            // 1. Busca la cuenta
             val accountEntity = accountDao.getAccountById(bill.accountId)
                 ?: throw Exception("Cuenta no encontrada: ${bill.accountId}")
 
-            // 2. Descuenta el saldo
+            // ← Validación de saldo
+            if (bill.amount > accountEntity.balance) {
+                throw Exception("Fondos insuficientes en la cuenta '${accountEntity.title}'")
+            }
+
             accountDao.updateBalance(
                 accountId  = bill.accountId,
                 newBalance = accountEntity.balance - bill.amount
             )
 
-            // 3. Crea la transacción de egreso
             val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
             transactionDao.insertTransaction(
                 TransactionEntity(
@@ -56,7 +58,6 @@ class MonthlyBillRepository(
                 )
             )
 
-            // 4. Marca como pagada
             monthlyBillDao.updateMonthlyBill(
                 bill.toEntity().copy(
                     status   = true,
