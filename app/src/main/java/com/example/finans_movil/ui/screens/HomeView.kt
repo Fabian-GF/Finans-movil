@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -66,10 +67,10 @@ import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -95,8 +96,8 @@ import com.example.finans_movil.Viewmodel.MonthlyBillViewModel
 import com.example.finans_movil.Viewmodel.ReportsViewModel
 import com.example.finans_movil.Viewmodel.TransactionViewModel
 import com.example.finans_movil.Viewmodel.TransferViewModel
+import com.example.finans_movil.ui.utilities.ThousandsSeparatorTransformation
 import com.example.finans_movil.ui.utilities.formatCOP
-import kotlin.collections.take
 
 // Colores
 private val AppBg      = Color(0xFF000000)
@@ -254,7 +255,6 @@ fun MainView(
 
             composable(Screen.MonthlyBill.route) {
                 MonthlyBillsView(
-                    bills = bills,
                     accounts = accounts,
                     viewModel = monthlyBillViewModel,
                     navController = navController
@@ -285,7 +285,7 @@ fun HomeContent(
             .background(AppBg)
     ) {
         LazyColumn(
-            state    = listState,
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 20.dp),
@@ -297,15 +297,15 @@ fun HomeContent(
             item {
                 HeroBalanceCard(
                     navController = navController,
-                    totalAhorros  = totalAhorros
+                    totalAhorros = totalAhorros
                 )
             }
 
             // 1. Gastos del mes
             item {
                 MonthlyExpensesCard(
-                    bills     = bills,
-                    accounts  = accounts,
+                    bills = bills,
+                    accounts = accounts,
                     viewModel = monthlyBillViewModel,
                     navController = navController
                 )
@@ -319,9 +319,9 @@ fun HomeContent(
             // 3. Solo 2 cuentas + botón "Ver más"
             item {
                 SectionHeader(
-                    title      = "Mis Cuentas",
+                    title = "Mis Cuentas",
                     actionText = "Ver todos",
-                    onAction   = { navController.navigate(Screen.Accounts.route) }
+                    onAction = { navController.navigate(Screen.Accounts.route) }
                 )
             }
 
@@ -340,11 +340,48 @@ fun HomeContent(
 
         ScrollBarIndicator(
             listState = listState,
-            modifier  = Modifier
+            modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(top = 16.dp, end = 6.dp, bottom = 16.dp)
                 .fillMaxHeight()
         )
+        errorMessage?.let { msg ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
+                    .zIndex(1f)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = Color(0xFF2F1A1A),
+                    border = BorderStroke(1.dp, Danger)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Danger,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = msg,
+                            color = Danger,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            LaunchedEffect(msg) {
+                kotlinx.coroutines.delay(3_000)
+                monthlyBillViewModel.clearError()
+            }
+        }
     }
 }
 
@@ -907,11 +944,27 @@ private fun CreateMonthlyBillDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Monto
-                DialogTextField(
-                    value         = amount,
-                    onValueChange = { amount = it },
-                    placeholder   = "Monto",
-                    keyboardType  = KeyboardType.Number
+                BasicTextField(
+                    value                = amount,
+                    onValueChange        = { amount = it.filter { c -> c.isDigit() } },
+                    singleLine           = true,
+                    keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    visualTransformation = ThousandsSeparatorTransformation,  // ← formato visual
+                    textStyle            = androidx.compose.ui.text.TextStyle(
+                        color    = WhiteSoft,
+                        fontSize = 14.sp
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(ButtonIdle, RoundedCornerShape(14.dp))
+                        .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    decorationBox = { inner ->
+                        if (amount.isEmpty()) {
+                            Text(text = "Monto", color = MutedSoft, fontSize = 14.sp)
+                        }
+                        inner()
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -919,7 +972,12 @@ private fun CreateMonthlyBillDialog(
                 // Día de vencimiento
                 DialogTextField(
                     value         = dueDay,
-                    onValueChange = { dueDay = it },
+                    onValueChange = { input ->
+                        val number = input.toIntOrNull()
+                        if (input.isEmpty() || (number != null && number in 1..31)) {
+                            dueDay = input
+                        }
+                    },
                     placeholder   = "Día de vencimiento  (1 - 31)",
                     keyboardType  = KeyboardType.Number
                 )
@@ -1080,13 +1138,19 @@ private fun DialogTextField(
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MonthlyBillsView(
-    bills:         List<MonthlyBill>,
     accounts:      List<Account>,
     viewModel:     MonthlyBillViewModel,
     navController: NavHostController
 ) {
+    val bills        by viewModel.bills.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
-    var showDialog by remember { mutableStateOf(false) }
+    var showDialog   by remember { mutableStateOf(false) }
+
+    // logs temporales
+    android.util.Log.d("BILLS", "Total bills: ${bills.size}")
+    bills.forEach {
+        android.util.Log.d("BILLS", "  -> ${it.name} | status=${it.status} | paidDate=${it.paidDate} | dueDay=${it.dueDay}")
+    }
 
     Box(
         modifier = Modifier
@@ -1101,6 +1165,7 @@ fun MonthlyBillsView(
         ) {
             item { Spacer(modifier = Modifier.height(24.dp)) }
 
+            // Cabecera
             item {
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
@@ -1132,9 +1197,9 @@ fun MonthlyBillsView(
 
             // Resumen pagado / pendiente
             item {
-                val pagados   = bills.count { it.status }
-                val pendientes = bills.count { !it.status }
-                val totalPagado   = bills.filter { it.status }.sumOf { it.amount }
+                val pagados        = bills.count { it.status }
+                val pendientes     = bills.count { !it.status }
+                val totalPagado    = bills.filter { it.status }.sumOf { it.amount }
                 val totalPendiente = bills.filter { !it.status }.sumOf { it.amount }
 
                 Card(
@@ -1147,21 +1212,49 @@ fun MonthlyBillsView(
                         modifier              = Modifier
                             .fillMaxWidth()
                             .padding(18.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment     = Alignment.CenterVertically
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "$pagados pagados", color = Accent,    fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            Text(text = formatCOP(totalPagado),   color = Accent,    fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text       = "$pagados pagados",
+                                color      = Accent,
+                                fontSize   = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text       = formatCOP(totalPagado),
+                                color      = Accent,
+                                fontSize   = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                        Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(CardBorder))
+                        // Divisor vertical
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(40.dp)
+                                .background(CardBorder)
+                        )
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "$pendientes pendientes", color = Danger, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            Text(text = formatCOP(totalPendiente), color = Danger, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text       = "$pendientes pendientes",
+                                color      = Danger,
+                                fontSize   = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text       = formatCOP(totalPendiente),
+                                color      = Danger,
+                                fontSize   = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
             }
 
+            // Lista de bills
             if (bills.isEmpty()) {
                 item {
                     Text(
@@ -1180,11 +1273,12 @@ fun MonthlyBillsView(
                         border   = BorderStroke(1.dp, CardBorder)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
+
                             ExpenseItem(
                                 bill  = bill,
                                 onPay = { viewModel.payBill(bill) }
                             )
-                            // Muestra fecha de pago si ya está pagada
+
                             if (bill.status && bill.paidDate != null) {
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
@@ -1193,7 +1287,7 @@ fun MonthlyBillsView(
                                     fontSize = 11.sp
                                 )
                             }
-                            // Muestra día de vencimiento si está pendiente
+
                             if (!bill.status) {
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
@@ -1207,15 +1301,17 @@ fun MonthlyBillsView(
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(16.dp)) }
+            // Espacio extra al final para que el toast no tape el último item
+            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
 
-        // Toast de error — fondos insuficientes
+        // Toast — fuera del LazyColumn, dentro del Box padre
         errorMessage?.let { msg ->
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp)
+                    .padding(bottom = 32.dp)
+                    .zIndex(1f)              // ← siempre encima
             ) {
                 Surface(
                     shape  = RoundedCornerShape(999.dp),
@@ -1223,21 +1319,29 @@ fun MonthlyBillsView(
                     border = BorderStroke(1.dp, Danger)
                 ) {
                     Row(
-                        modifier          = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                        modifier          = Modifier.padding(
+                            horizontal = 20.dp,
+                            vertical   = 12.dp
+                        ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector        = Icons.Default.Check,
+                            imageVector        = Icons.Default.Warning,  // ← ícono más apropiado
                             contentDescription = null,
                             tint               = Danger,
                             modifier           = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = msg, color = Danger, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text       = msg,
+                            color      = Danger,
+                            fontSize   = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
-            // Auto-dismiss después de 3 segundos
+
             LaunchedEffect(msg) {
                 kotlinx.coroutines.delay(3_000)
                 viewModel.clearError()

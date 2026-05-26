@@ -44,6 +44,7 @@ class MonthlyBillViewModel(
             try {
                 repository.payBill(bill)
             } catch (e: Exception) {
+                android.util.Log.e("BILLS", "Error al pagar: ${e.message}")
                 _errorMessage.value = e.message
             }
         }

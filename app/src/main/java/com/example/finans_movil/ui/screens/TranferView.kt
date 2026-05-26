@@ -93,7 +93,13 @@ fun TransferView(
         AccountSelector(
             selectedAccount   = fromAccount,
             accounts          = eligibleAccounts,
-            onAccountSelected = { fromAccount = it }
+            onAccountSelected = { selected ->
+                fromAccount = selected
+                // Si toAccount es la misma cuenta, resetea al primer elegible diferente
+                if (toAccount == selected) {
+                    toAccount = eligibleAccounts.first { it != selected }
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(20.dp))

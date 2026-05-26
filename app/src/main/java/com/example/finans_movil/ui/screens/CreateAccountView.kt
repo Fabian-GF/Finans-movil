@@ -146,10 +146,10 @@ fun  CreateAccountView(
             OutlinedTextField(
                 value = number,
                 onValueChange = { number = it },
-                label = { Text("Número") },
+                label = { Text("Llave Bre-B") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number
+                    keyboardType = KeyboardType.Ascii
                 )
             )
 
